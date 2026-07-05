@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.routers import auth, health
 
 
 try:
@@ -22,12 +21,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=settings.get_origins_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 
-app.include_router(health.router)
-app.include_router(auth.router, prefix=f"{settings.API_V1_STR}", tags=["Authentication"])
+# app.include_router(auth.router, prefix=f"{settings.API_V1_STR}", tags=["Authentication"])
+
+@app.get("/")
+def read_root():
+    return {"message": "LIMS API Engine is running smoothly."}
