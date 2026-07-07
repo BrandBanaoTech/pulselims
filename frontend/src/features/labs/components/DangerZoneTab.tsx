@@ -33,7 +33,7 @@ export function DangerZoneTab({ labData }: DangerZoneTabProps) {
     setIsDeactivating(true);
     setApiError(null);
     try {
-      await labService.updateLab(labData.id, { is_active: !isActive });
+      // await labService.updateLab(labData.id, { is_active: !isActive });
       setIsActive(!isActive);
     } catch (error: any) {
       setApiError(error.response?.data?.detail || "Failed to update workspace status.");
