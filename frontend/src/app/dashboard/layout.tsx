@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/features/auth/components/AuthGuard";
-// import { DashboardShell } from "@/components/layout/DashboardShell";
+import { DashboardShell } from "@/features/labs/components/DashboardShell";
 import { ReactNode } from "react";
 import { Metadata } from "next";
 // import { CreateLabModal } from "@/components/models/CreateLabModal";
@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <AuthGuard requireActiveLab={true}>
-      {/* <DashboardShell> */}
+      <DashboardShell>
         {children}
-      {/* </DashboardShell> */}
+      </DashboardShell>
     {/* //   <CreateLabModal /> */}
     </AuthGuard>
   );

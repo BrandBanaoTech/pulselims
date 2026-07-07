@@ -1,29 +1,32 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool # Import this for Supabase!
+from sqlalchemy.pool import NullPool
 from typing import Generator
+from .config import settings
 
-# Securely load the URL from the environment (set in Render Dashboard)
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./database.db")
+# Securely load the URL
+# SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./database.db")
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-# Automatically fix legacy "postgres://" schemes injected by some cloud providers
+# Fix for common Cloud/Heroku/Render URI schemes
 if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
     SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-# Configure the Engine based on the database type
+# Configure the Engine
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
-    # Local Development Configuration
     engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False}
     )
 else:
-    # Production Cloud Configuration (Supabase Transaction Pooler - Port 6543)
+    # Production Cloud Configuration
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        poolclass=NullPool, # Let Supabase handle the pooling to prevent memory leaks
+        poolclass=NullPool,     # Critical for Supabase Transaction Pooler
+        pool_pre_ping=True,     # Critical for Cloud SQL: Automatically handles stale connections
     )
 
+# Session Setup
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -32,8 +35,9 @@ SessionLocal = sessionmaker(
 
 Base = declarative_base()
 
+# FastAPI Dependency
 def get_db() -> Generator:
-    """FastAPI Dependency to acquire a clean SQLAlchemy session and auto-close it."""
+    """Acquires a session and ensures it closes even if an error occurs."""
     db = SessionLocal()
     try:
         yield db

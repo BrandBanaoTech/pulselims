@@ -1,10 +1,12 @@
 import re
-from datetime import datetime
-from typing import Dict, List, Optional
+from datetime import datetime, timezone
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, UUID4, field_validator, model_validator
 
 
+# ==========================================
 # BASE USER BLUEPRINT
+# ==========================================
 class UserBase(BaseModel):
     email: EmailStr = Field(
         ...,
@@ -15,7 +17,7 @@ class UserBase(BaseModel):
         ...,
         min_length=2,
         max_length=150,
-        description="User's legalfull name.",
+        description="User's legal full name.",
         examples=["Full Name"]
     )
     mobile: str = Field(
@@ -24,7 +26,7 @@ class UserBase(BaseModel):
         min_length=10,
         max_length=15,
         description="User's mobile number.",
-        examples=["+1234567890"]
+        examples=["+919876543210"]
     )
 
     @field_validator('full_name')
@@ -35,13 +37,17 @@ class UserBase(BaseModel):
         return v.strip()
 
 
-# OTP REQUEST SCHEMA, (Payload sent by frontend to trigger the OTP generation.)
+# ==========================================
+# OTP REQUEST SCHEMA
+# ==========================================
 class SendRegistrationOTP(BaseModel):
     mobile: str = Field(..., pattern=r'^\+?[1-9]\d{1,14}$')
     email: EmailStr = Field(..., description="Mandatory email to receive the second OTP.")
 
 
-#  """The response sent BACK to the frontend containing the stateless cryptographic tokens."""
+# ==========================================
+# OTP RESPONSE SCHEMA
+# ==========================================
 class OTPResponse(BaseModel):
     message: str = Field(default="OTPs sent successfully.")
     mobile_verification_token: str = Field(..., description="State token for mobile verification.")
@@ -49,7 +55,9 @@ class OTPResponse(BaseModel):
     expires_in_minutes: int = Field(default=10)
 
 
-# Owner Registration Input & VERIFY (Inherits from UserBase. Adds password and the required OTP fields.)
+# ==========================================
+# OWNER REGISTRATION (Verify & Create)
+# ==========================================
 class OwnerRegisterRequest(UserBase):
     password: str = Field(
         ...,
@@ -84,49 +92,45 @@ class OwnerRegisterRequest(UserBase):
     @model_validator(mode='after')
     def validate_conditional_otps(self) -> 'OwnerRegisterRequest':
         """
-        Cross-field validation: Ensures that if an email was provided, 
-        the user also supplied the email_otp.
+        Cross-field validation: Ensures that if an email or mobile was provided, 
+        the corresponding OTP is also present.
         """
         if self.email and not self.email_otp:
             raise ValueError("An Email OTP is required because an email address was provided.")
-        elif not self.email and self.email_otp:
-            raise ValueError("Email OTP provided, but no email address was specified.")
-        elif self.mobile and not self.mobile_otp:
-            raise ValueError("An Mobile OTP is required because an mobile number address was provided.")
-        elif not self.mobile and self.mobile_otp:
-            raise ValueError("Mobile OTP provided, but no mobile number was specified.")
+        if self.mobile and not self.mobile_otp:
+            raise ValueError("A Mobile OTP is required because a mobile number was provided.")
         return self
     
 
+# ==========================================
 # SECURE USER OUTPUT FILTER
+# ==========================================
 class UserResponse(UserBase):
-    id: UUID4 = Field(description="Immutable, cryptographically safe unique identifier preventing IDOR enumeration attacks.")
+    id: UUID4 = Field(description="Immutable, cryptographically safe unique identifier.")
     is_active: bool = Field(default=False, description="Indicates if the user profile is active or suspended.")
-    is_verified: bool = Field(default=False, description="Indicated if the user profile is verfied or not.")
-    # is_platform_admin: bool = Field(default=False, description="Flag designating SaaS super-admin system access.")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_verified: bool = Field(default=False, description="Indicates if the user profile is verified.")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    # Modern Pydantic V2 framework configuration for mapping direct database models (ORM objects)
+    # Modern Pydantic V2 framework configuration
     model_config = ConfigDict(from_attributes=True)
 
 
+# ==========================================
 # STATELESS TOKEN ARCHITECTURE
+# ==========================================
 class TokenPayload(BaseModel):
     """
     Decrypted JWT inner payload structure. 
-    Enables blazing fast, zero-database-hit permission checks.
+    Kept lean to reduce token size and HTTP header bloat.
     """
     sub: str = Field(..., description="The User UUID string acting as the token subject.")
     exp: int = Field(..., description="Token expiration Unix timestamp.")
     email: EmailStr
     mobile: str
-    
-    # Fast multi-tenant dictionary structure: {"<lab_uuid_string>": ["owner", "admin", "intake"]}
-    # lab_permissions: Dict[str, List[str]] = Field(default_factory=dict)
 
 
 class Token(BaseModel):
-    """The immediate response schema delivered following successful login credentials verification."""
+    """The immediate response schema delivered following successful login."""
     access_token: str = Field(..., description="The cryptographically signed JWT bearer token string.")
     token_type: str = Field(default="bearer", description="Explicit standard authorization transport token type.")
     user: UserResponse = Field(..., description="The filtered user details profile to initialize client-side states.")

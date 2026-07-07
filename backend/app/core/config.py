@@ -12,10 +12,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DOCS_URL: str = "/docs"
     REDOC_URL: str = "/redoc"
+    DEBUG: bool = True
     SECRET_KEY: str = config.get('SECRET_KEY')
     ALGORITHM: str = config.get('ALGORITHM')
     ORIGINS: str = config.get('ORIGINS')
     ACCESS_TOKEN_EXPIRE_MINUTES: int = config.get('ACCESS_TOKEN_EXPIRE_MINUTES')
+    DATABASE_URL: str = config.get('DATABASE_URL')
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive = True, extra="ignore")
 

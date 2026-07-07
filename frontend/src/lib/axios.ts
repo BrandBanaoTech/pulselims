@@ -39,6 +39,12 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    const originalRequest = error.config;
+
+    // ENTERPRISE UPGRADE: Prevent infinite reload loops if the 401 came from the login endpoint itself
+    if (originalRequest?.url?.includes('/login') || originalRequest?.url?.includes('/auth')) {
+      return Promise.reject(error);
+    }
     // Any status codes that falls outside the range of 2xx causes this function to trigger
     if (error.response) {
       // Handle Token Expiry / Unauthorized Access
