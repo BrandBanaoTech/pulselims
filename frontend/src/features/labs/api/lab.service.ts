@@ -1,5 +1,5 @@
 import { api } from "@/lib/axios"; // Your central authenticated Axios instance
-import { LabUpdateValues, LabDeletionChallengeValues } from "../schemas/labUpdate.schema";
+import { CreateLabFormValues, LabUpdateValues, LabDeletionChallengeValues } from "../schemas/lab.schema";
 
 export interface LabResponse {
   id: string;
@@ -30,6 +30,13 @@ export interface LabResponse {
 
 export const labService = {
   // Existing methods (createLab, etc.) should stay here
+  
+  // Provisions a new laboratory tenant workspace.
+  createLab: async (data: CreateLabFormValues): Promise<LabResponse> => {
+    // We pass the deeply nested object directly; Axios handles the JSON serialization
+    const response = await api.post<LabResponse>('/labs', data);
+    return response.data;
+  },
   // Fetches all labs the current user has access to.
   getMyWorkspaces: async (): Promise<LabResponse[]> => {
     const response = await api.get<LabResponse[]>('/labs'); // Adjust endpoint if needed
