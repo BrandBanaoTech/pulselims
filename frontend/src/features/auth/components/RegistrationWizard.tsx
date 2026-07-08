@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "../api/auth.service";
 import { registerFormSchema, RegisterFormValues } from "../schemas/register.schema";
+import { Loader2, AlertTriangle, ArrowRight, ArrowLeft, ShieldCheck, Mail, Smartphone } from "lucide-react";
 
 export function RegistrationWizard() {
   const router = useRouter();
@@ -29,15 +30,25 @@ export function RegistrationWizard() {
     handleSubmit,
     trigger,
     getValues,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
     mode: "onTouched",
   });
 
-  /**
-   * STEP 1 HANDLER: Validates user data and requests OTPs
-   */
+  // 1. SMART VALIDATION: Watch fields to dynamically enable/disable buttons per step
+  const watched = watch();
+
+  const isStep1Valid = 
+    !!(watched.full_name && watched.email && watched.mobile && watched.password) &&
+    !errors.full_name && !errors.email && !errors.mobile && !errors.password;
+
+  const isStep2Valid = 
+    watched.email_otp?.length === 6 && watched.mobile_otp?.length === 6 &&
+    !errors.email_otp && !errors.mobile_otp;
+
+  //  STEP 1 HANDLER: Validates user data and requests OTPs
   const handleRequestOTP = async () => {
     setGlobalError(null);
     
@@ -93,7 +104,7 @@ export function RegistrationWizard() {
       setToken(response.access_token);
       
       // 2. Redirect to the main LIMS dashboard
-      router.push("/dashboard");
+      router.push("/onboarding");
 
     } catch (error: any) {
       setGlobalError(
@@ -105,118 +116,142 @@ export function RegistrationWizard() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-8 bg-white shadow-xl rounded-2xl border border-gray-100">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-extrabold text-gray-900">
-          {currentStep === 1 ? "Create Workspace" : "Verify Identity"}
+    <div className="w-full bg-white p-8 shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-100">
+      
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-extrabold text-slate-900">
+          {currentStep === 1 ? "Owner Details" : "Verify Identity"}
         </h2>
-        <p className="text-gray-500 mt-2 text-sm">
+        <p className="text-slate-500 mt-1 text-sm font-medium">
           {currentStep === 1 
-            ? "Register your Laboratory Information Management System." 
-            : "Enter the 6-digit codes sent to your email and mobile."}
+            ? "Create your master administrative account." 
+            : "Enter the 6-digit secure codes sent to you."}
         </p>
       </div>
 
       {globalError && (
-        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-md">
-          {globalError}
+        <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+          <AlertTriangle className="text-red-600 shrink-0 mt-0.5" size={18} />
+          <p className="text-sm font-bold text-red-700 leading-tight">{globalError}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit(onSubmitFinal)} className="space-y-5">
-        {/* STEP 1 FIELDS */}
+        
+        {/* ================= STEP 1 FIELDS ================= */}
         <div className={currentStep === 1 ? "block space-y-5" : "hidden"}>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
             <input
               {...register("full_name")}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
-              placeholder="e.g. John Doe"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+              placeholder="e.g. Dr. Jane Doe"
             />
-            {errors.full_name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.full_name.message}</p>}
+            {errors.full_name && <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.full_name.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Corporate Email</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email</label>
             <input
               {...register("email")}
               type="email"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
               placeholder="admin@yourlab.com"
             />
-            {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email.message}</p>}
+            {errors.email && <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Mobile Number</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mobile Number</label>
             <input
               {...register("mobile")}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
-              placeholder="+12345678900"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+              placeholder="+919876543210"
             />
-            {errors.mobile && <p className="text-red-500 text-xs mt-1 font-medium">{errors.mobile.message}</p>}
+            {errors.mobile && <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.mobile.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Secure Password</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Secure Password</label>
             <input
               {...register("password")}
               type="password"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
               placeholder="••••••••••••"
             />
-            {errors.password && <p className="text-red-500 text-xs mt-1 font-medium">{errors.password.message}</p>}
+            {errors.password && <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.password.message}</p>}
           </div>
 
+          {/* Step 1 Submit */}
           <button
             type="button"
             onClick={handleRequestOTP}
-            disabled={isLoading}
-            className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center"
+            disabled={isLoading || !isStep1Valid}
+            className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mt-2 group"
           >
-            {isLoading ? "Generating Secure Tokens..." : "Continue to Verification"}
+            {isLoading ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              "Generate Secure Tokens"
+            )}
+            {!isLoading && isStep1Valid && (
+              <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+            )}
           </button>
         </div>
 
-        {/* STEP 2 FIELDS */}
+        {/* ================= STEP 2 FIELDS ================= */}
         <div className={currentStep === 2 ? "block space-y-5 animate-in slide-in-from-right-4 duration-300" : "hidden"}>
+          
+          <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl flex items-start gap-3 mb-6">
+            <ShieldCheck className="text-teal-600 shrink-0 mt-0.5" size={18} />
+            <p className="text-xs font-bold text-teal-800 leading-relaxed">
+              We've sent verification codes to <br/>
+              <span className="text-teal-600">{watched.email}</span> and <span className="text-teal-600">{watched.mobile}</span>.
+            </p>
+          </div>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Email OTP</label>
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <Mail size={14} /> Email OTP
+            </label>
             <input
               {...register("email_otp")}
               maxLength={6}
-              className="w-full text-center tracking-[0.5em] font-mono text-xl px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+              className="w-full text-center tracking-[0.5em] font-mono text-xl px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
               placeholder="••••••"
             />
-            {errors.email_otp && <p className="text-red-500 text-xs mt-1 font-medium text-center">{errors.email_otp.message}</p>}
+            {errors.email_otp && <p className="text-red-500 text-[10px] mt-1.5 font-bold text-center">{errors.email_otp.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Mobile OTP</label>
+            <label className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              <Smartphone size={14} /> Mobile OTP
+            </label>
             <input
               {...register("mobile_otp")}
               maxLength={6}
-              className="w-full text-center tracking-[0.5em] font-mono text-xl px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+              className="w-full text-center tracking-[0.5em] font-mono text-xl px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
               placeholder="••••••"
             />
-            {errors.mobile_otp && <p className="text-red-500 text-xs mt-1 font-medium text-center">{errors.mobile_otp.message}</p>}
+            {errors.mobile_otp && <p className="text-red-500 text-[10px] mt-1.5 font-bold text-center">{errors.mobile_otp.message}</p>}
           </div>
 
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={() => setCurrentStep(1)}
               disabled={isLoading}
-              className="w-1/3 py-3.5 px-4 bg-white border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-70"
+              className="w-1/3 py-3.5 px-4 bg-white border border-slate-200 text-slate-600 font-extrabold text-sm rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
             >
-              Back
+              <ArrowLeft size={16} /> Back
             </button>
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-2/3 py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm disabled:opacity-70"
+              disabled={isLoading || !isStep2Valid}
+              className="w-2/3 flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed"
             >
-              {isLoading ? "Authenticating..." : "Complete Setup"}
+              {isLoading ? "Verifying..." : "Complete Setup"}
             </button>
           </div>
         </div>

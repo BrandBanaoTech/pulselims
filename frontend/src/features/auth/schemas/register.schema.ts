@@ -14,7 +14,7 @@ export const stepOneSchema = z.object({
     .refine((val) => val.length > 0, { message: "Full name cannot be empty spaces." }),
   
   email: z
-    .email("Please provide a valid, secure corporate email address.")
+    .email("Please provide a valid, secure email address.")
     .toLowerCase(),
   
   mobile: z
