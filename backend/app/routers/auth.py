@@ -10,7 +10,7 @@ from ..api.deps import get_current_token_payload
 from ..services.otp_service import generate_stateless_otp, verify_stateless_otp
 from ..core.security import create_access_token, get_password_hash, verify_password
 from ..models.user import User
-from ..schemas.auth import OTPResponse, OwnerRegisterRequest, SendRegistrationOTP, Token, TokenPayload, UserResponse
+from ..schemas.auth import LoginOTPResponse, LoginWithOTPRequest, OTPResponse, OwnerRegisterRequest, SendLoginOTP, SendRegistrationOTP, Token, TokenPayload, UserResponse
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -29,7 +29,7 @@ def send_email(email: str, otp: str):
 
 
 # ==========================================
-# 1. REQUEST OTPs (Stateless Cryptography)
+# 1. REGISTER: REQUEST OTPs (Stateless Cryptography)
 # ==========================================
 @router.post("/request-otp", response_model=OTPResponse, status_code=status.HTTP_200_OK)
 def request_registration_otps(
@@ -72,7 +72,7 @@ def request_registration_otps(
 
 
 # ==========================================
-# 2. VERIFY & REGISTER THE LAB OWNER
+# 2. REGISTER: VERIFY & REGISTER THE LAB OWNER
 # ==========================================
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db)):
@@ -139,38 +139,78 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
 
 
 # ==========================================
-# 3. LOGIN & GENERATE STATELESS JWT
+# 4. PASSWORDLESS OTP LOGIN FLOW
 # ==========================================
-@router.post("/login", response_model=Token)
-def login_access_token(
-    db: Session = Depends(get_db), 
-    form_data: OAuth2PasswordRequestForm = Depends()
+@router.post("/request-login-otp", response_model=LoginOTPResponse, status_code=status.HTTP_200_OK)
+def request_login_otp(
+    request: SendLoginOTP, 
+    background_tasks: BackgroundTasks, 
+    db: Session = Depends(get_db)
 ):
     """
-    OAuth2 compatible token login. 
-    Issues a highly optimized, lean JWT payload.
+    Step 1 of Passwordless Login: Validates user exists and dispatches SMS.
     """
-    clean_email = form_data.username.lower()
-    
-    stmt = select(User).where(User.email == clean_email)
+    clean_mobile = request.mobile
+
+    # 1. Ensure user actually exists and is active
+    stmt = select(User).where(User.mobile == clean_mobile)
     user = db.execute(stmt).scalars().first()
 
-    auth_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Incorrect email or password",
-        headers={"WWW-Authenticate": "Bearer"},
+    if not user:
+        # Security UX: Return generic error to prevent user enumeration attacks
+        raise HTTPException(status_code=404, detail="Account not found.")
+        
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="This account has been deactivated.")
+
+    # 2. Generate Cryptographic State
+    mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
+
+    # 3. Dispatch Non-Blocking SMS
+    background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
+
+    return LoginOTPResponse(
+        message="Login OTP sent successfully.",
+        mobile_verification_token=mobile_token,
+        expires_in_minutes=10
     )
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise auth_exception
 
-    if not user.is_active:
+
+@router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
+def login_with_otp(
+    request: LoginWithOTPRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Step 2 of Passwordless Login: Verifies the OTP and issues the JWT.
+    """
+    clean_mobile = request.mobile
+
+    # 1. Verify Cryptographic Token
+    is_valid = verify_stateless_otp(
+        target=clean_mobile,
+        plain_otp=request.mobile_otp,
+        verification_token=request.mobile_verification_token
+    )
+    
+    if not is_valid:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="This account has been deactivated."
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Invalid or expired OTP."
         )
 
-    # Create a lean, stateless token
+    # 2. Fetch User
+    stmt = select(User).where(User.mobile == clean_mobile)
+    user = db.execute(stmt).scalars().first()
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Account not found or deactivated."
+        )
+
+    # 3. Issue the standard JWT session
     access_token = create_access_token(
         subject=user.id,
         email=user.email,
@@ -182,6 +222,52 @@ def login_access_token(
         "token_type": "bearer",
         "user": user 
     }
+
+
+# ==========================================
+# 3. LOGIN: LOGIN & GENERATE STATELESS JWT
+# ==========================================
+# @router.post("/login", response_model=Token)
+# def login_access_token(
+#     db: Session = Depends(get_db), 
+#     form_data: OAuth2PasswordRequestForm = Depends()
+# ):
+#     """
+#     OAuth2 compatible token login. 
+#     Issues a highly optimized, lean JWT payload.
+#     """
+#     clean_email = form_data.username.lower()
+    
+#     stmt = select(User).where(User.email == clean_email)
+#     user = db.execute(stmt).scalars().first()
+
+#     auth_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Incorrect email or password",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+
+#     if not user or not verify_password(form_data.password, user.hashed_password):
+#         raise auth_exception
+
+#     if not user.is_active:
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN, 
+#             detail="This account has been deactivated."
+#         )
+
+#     # Create a lean, stateless token
+#     access_token = create_access_token(
+#         subject=user.id,
+#         email=user.email,
+#         mobile=str(user.mobile)
+#     )
+
+#     return {
+#         "access_token": access_token,
+#         "token_type": "bearer",
+#         "user": user 
+#     }
 
 
 # ==========================================

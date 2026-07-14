@@ -46,12 +46,28 @@ class SendRegistrationOTP(BaseModel):
 
 
 # ==========================================
+# LOGIN OTP REQUEST SCHEMA
+# ==========================================
+class SendLoginOTP(BaseModel):
+    mobile: str = Field(..., pattern=r'^\+?[1-9]\d{1,14}$')
+
+
+# ==========================================
 # OTP RESPONSE SCHEMA
 # ==========================================
 class OTPResponse(BaseModel):
     message: str = Field(default="OTPs sent successfully.")
     mobile_verification_token: str = Field(..., description="State token for mobile verification.")
     email_verification_token: str = Field(..., description="State token for email verification.")
+    expires_in_minutes: int = Field(default=10)
+
+
+# ==========================================
+# LOGIN OTP RESPONSE SCHEMA
+# ==========================================
+class LoginOTPResponse(BaseModel):
+    message: str = Field(default="OTP sent successfully.")
+    mobile_verification_token: str = Field(..., description="State token for mobile verification.")
     expires_in_minutes: int = Field(default=10)
 
 
@@ -114,6 +130,28 @@ class UserResponse(UserBase):
     # Modern Pydantic V2 framework configuration
     model_config = ConfigDict(from_attributes=True)
 
+
+# ==========================================
+# VERIFY LOGIN OTP SCHEMA
+# ==========================================
+class LoginWithOTPRequest(BaseModel):
+    """Schema for step 2 of Passwordless Login"""
+    mobile: str = Field(..., description="The user's mobile number.")
+    mobile_otp: str = Field(..., min_length=6, max_length=6, description="6-digit mobile OTP")
+    mobile_verification_token: str = Field(..., description="The JWT state token returned in Step 1")
+
+    @field_validator('mobile', mode='before')
+    @classmethod
+    def sanitize_and_format_mobile(cls, v: str) -> str:
+        if not isinstance(v, str):
+            raise ValueError("Mobile number must be a string")
+        sanitized = re.sub(r'[^\d+]', '', v)
+        if len(sanitized) == 10 and not sanitized.startswith('+'):
+            sanitized = f"+91{sanitized}"
+        elif len(sanitized) == 11 and sanitized.startswith('0'):
+            sanitized = f"+91{sanitized[1:]}"
+        return sanitized
+    
 
 # ==========================================
 # STATELESS TOKEN ARCHITECTURE
