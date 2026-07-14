@@ -7,6 +7,7 @@
 // import { useAuthStore } from "@/store/useAuthStore";
 // import { authService } from "../api/auth.service";
 // import { loginFormSchema, LoginFormValues } from "../schemas/login.schema";
+// import { Loader2, AlertTriangle, ArrowRight } from "lucide-react";
 
 // export function LoginForm() {
 //   const router = useRouter();
@@ -18,10 +19,10 @@
 //   const {
 //     register,
 //     handleSubmit,
-//     formState: { errors },
+//     formState: { errors, isValid },
 //   } = useForm<LoginFormValues>({
 //     resolver: zodResolver(loginFormSchema),
-//     mode: "onSubmit",
+//     mode: "onChange",
 //   });
 
 //   const onSubmit = async (data: LoginFormValues) => {
@@ -30,16 +31,11 @@
 
 //     try {
 //       const response = await authService.login(data);
-      
-//       // 1. Securely store the JWT in our Zustand store
 //       setToken(response.access_token);
-      
-//       // 2. Redirect to the Dashboard (or lab selection screen)
 //       router.push("/dashboard");
 //     } catch (error: any) {
-//       // Catch FastAPI 401/403 errors and display them cleanly
 //       setAuthError(
-//         error.response?.data?.detail || "Invalid credentials. Please try again."
+//         error.response?.data?.detail || "Invalid credentials. Please verify your email and password."
 //       );
 //     } finally {
 //       setIsLoading(false);
@@ -47,63 +43,73 @@
 //   };
 
 //   return (
-//     <div className="w-full max-w-md mx-auto p-8 bg-white shadow-xl rounded-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-300">
-//       <div className="mb-8 text-center">
-//         <h2 className="text-3xl font-extrabold text-gray-900">Welcome Back</h2>
-//         <p className="text-gray-500 mt-2 text-sm">
-//           Sign in to your LIMS workspace.
+//     <div className="w-full bg-white p-8 shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-100">
+      
+//       <div className="mb-6 text-center">
+//         <h2 className="text-xl font-extrabold text-slate-900">Welcome Back</h2>
+//         <p className="text-slate-500 mt-1 text-sm font-medium">
+//           Sign in to your clinical workspace.
 //         </p>
 //       </div>
 
 //       {authError && (
-//         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded-r-md">
-//           {authError}
+//         <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+//           <AlertTriangle className="text-red-600 shrink-0 mt-0.5" size={18} />
+//           <p className="text-sm font-bold text-red-700 leading-tight">{authError}</p>
 //         </div>
 //       )}
 
 //       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 //         <div>
-//           <label className="block text-sm font-semibold text-gray-700 mb-1">
+//           <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
 //             Email Address
 //           </label>
 //           <input
 //             {...register("email")}
 //             type="email"
-//             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+//             autoComplete="email"
+//             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
 //             placeholder="admin@yourlab.com"
 //           />
 //           {errors.email && (
-//             <p className="text-red-500 text-xs mt-1 font-medium">{errors.email.message}</p>
+//             <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.email.message}</p>
 //           )}
 //         </div>
 
 //         <div>
-//           <div className="flex items-center justify-between mb-1">
-//             <label className="block text-sm font-semibold text-gray-700">
+//           <div className="flex items-center justify-between mb-2">
+//             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
 //               Password
 //             </label>
-//             {/* Future Feature Placeholder */}
-//             <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors">
+//             <a href="#" className="text-[11px] font-bold text-teal-600 hover:text-teal-700 transition-colors">
 //               Forgot password?
 //             </a>
 //           </div>
 //           <input
 //             {...register("password")}
 //             type="password"
-//             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all outline-none"
+//             autoComplete="current-password"
+//             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
 //             placeholder="••••••••••••"
 //           />
 //           {errors.password && (
-//             <p className="text-red-500 text-xs mt-1 font-medium">{errors.password.message}</p>
+//             <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.password.message}</p>
 //           )}
 //         </div>
 
 //         <button
 //           type="submit"
-//           disabled={isLoading}
-//           className="w-full py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors shadow-sm disabled:opacity-70 flex items-center justify-center mt-2"
+//           disabled={isLoading || !isValid}
+//           className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mt-2 group"
 //         >
-//           {isLoading ? "Authenticating..." : "Sign In"}
+//           {isLoading ? (
+//             <Loader2 className="animate-spin" size={18} />
+//           ) : (
+//             "Secure Sign In"
+//           )}
+//           {!isLoading && isValid && (
+//             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
+//           )}
 //         </button>
 //       </form>
 //     </div>
@@ -115,40 +121,90 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "../api/auth.service";
-import { loginFormSchema, LoginFormValues } from "../schemas/login.schema";
-import { Loader2, AlertTriangle, ArrowRight } from "lucide-react";
+import { Loader2, AlertTriangle, ArrowRight, ArrowLeft, Smartphone, ShieldCheck } from "lucide-react";
+import { loginMobileSchema, loginOtpSchema } from "../schemas/login.schema";
+
+const combinedLoginSchema = loginMobileSchema.extend({
+  mobile_otp: loginOtpSchema.shape.mobile_otp.optional(), 
+});
+
+type LoginWizardValues = z.infer<typeof combinedLoginSchema>;
+
+const parseApiError = (error: any, fallback: string) => {
+  const detail = error.response?.data?.detail;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) return detail[0].msg;
+  return fallback;
+};
 
 export function LoginForm() {
   const router = useRouter();
   const setToken = useAuthStore((state) => state.setToken);
   
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  
+  // MATCHES BACKEND
+  const [mobileVerificationToken, setMobileVerificationToken] = useState("");
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
+    trigger,
+    getValues,
+    watch,
+    formState: { errors },
+  } = useForm<LoginWizardValues>({
+    resolver: zodResolver(combinedLoginSchema),
     mode: "onChange",
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const watchedMobile = watch("mobile");
+  const watchedOtp = watch("mobile_otp"); // MATCHES BACKEND
+
+  const isStep1Valid = !!watchedMobile && !errors.mobile;
+  const isStep2Valid = watchedOtp?.length === 6 && !errors.mobile_otp;
+
+  const handleRequestOTP = async () => {
+    setAuthError(null);
+    const isValid = await trigger("mobile");
+    if (!isValid) return;
+
+    setIsLoading(true);
+    try {
+      const mobile = getValues("mobile");
+      const response = await authService.requestLoginOtp({ mobile });
+      
+      // Assumes your backend returns {"mobile_verification_token": "..."} in step 1
+      setMobileVerificationToken(response.mobile_verification_token || response.verification_token);
+      setCurrentStep(2);
+    } catch (error: any) {
+      setAuthError(parseApiError(error, "Could not send secure code. Please verify your number."));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onSubmitFinal = async (data: LoginWizardValues) => {
     setAuthError(null);
     setIsLoading(true);
 
     try {
-      const response = await authService.login(data);
+      const response = await authService.verifyLoginOtp({
+        mobile: data.mobile,
+        mobile_otp: data.mobile_otp as string,
+        mobile_verification_token: mobileVerificationToken,
+      });
+      
       setToken(response.access_token);
       router.push("/dashboard");
     } catch (error: any) {
-      setAuthError(
-        error.response?.data?.detail || "Invalid credentials. Please verify your email and password."
-      );
+      setAuthError(parseApiError(error, "Invalid code. Please try again."));
     } finally {
       setIsLoading(false);
     }
@@ -156,11 +212,14 @@ export function LoginForm() {
 
   return (
     <div className="w-full bg-white p-8 shadow-xl shadow-slate-200/50 rounded-3xl border border-slate-100">
-      
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-extrabold text-slate-900">Welcome Back</h2>
+        <h2 className="text-xl font-extrabold text-slate-900">
+          {currentStep === 1 ? "Welcome Back" : "Verify Identity"}
+        </h2>
         <p className="text-slate-500 mt-1 text-sm font-medium">
-          Sign in to your clinical workspace.
+          {currentStep === 1 
+            ? "Sign in to your clinical workspace." 
+            : "Enter the secure code sent to your phone."}
         </p>
       </div>
 
@@ -171,58 +230,90 @@ export function LoginForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Email Address
-          </label>
-          <input
-            {...register("email")}
-            type="email"
-            autoComplete="email"
-            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-            placeholder="admin@yourlab.com"
-          />
-          {errors.email && (
-            <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.email.message}</p>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Password
+      <form onSubmit={handleSubmit(onSubmitFinal)} className="space-y-5">
+        
+        {/* STEP 1: MOBILE INPUT */}
+        <div className={currentStep === 1 ? "block space-y-5 animate-in slide-in-from-left-4 duration-300" : "hidden"}>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Registered Mobile Number
             </label>
-            <a href="#" className="text-[11px] font-bold text-teal-600 hover:text-teal-700 transition-colors">
-              Forgot password?
-            </a>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <Smartphone className="h-5 w-5 text-slate-400" />
+              </div>
+              <input
+                {...register("mobile")}
+                type="tel"
+                autoComplete="tel"
+                className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+                placeholder="+919876543210"
+              />
+            </div>
+            {errors.mobile && (
+              <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.mobile.message}</p>
+            )}
           </div>
-          <input
-            {...register("password")}
-            type="password"
-            autoComplete="current-password"
-            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
-            placeholder="••••••••••••"
-          />
-          {errors.password && (
-            <p className="text-red-500 text-[10px] mt-1.5 font-bold">{errors.password.message}</p>
-          )}
+
+          <button
+            type="button"
+            onClick={handleRequestOTP}
+            disabled={isLoading || !isStep1Valid}
+            className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mt-2 group"
+          >
+            {isLoading ? <Loader2 className="animate-spin" size={18} /> : "Send Secure Code"}
+            {!isLoading && isStep1Valid && <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />}
+          </button>
         </div>
 
-        <button
-          type="submit"
-          disabled={isLoading || !isValid}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed mt-2 group"
-        >
-          {isLoading ? (
-            <Loader2 className="animate-spin" size={18} />
-          ) : (
-            "Secure Sign In"
-          )}
-          {!isLoading && isValid && (
-            <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          )}
-        </button>
+        {/* STEP 2: OTP VERIFICATION */}
+        <div className={currentStep === 2 ? "block space-y-5 animate-in slide-in-from-right-4 duration-300" : "hidden"}>
+          <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl flex items-start gap-3 mb-2">
+            <ShieldCheck className="text-teal-600 shrink-0 mt-0.5" size={18} />
+            <p className="text-xs font-bold text-teal-800 leading-relaxed">
+              A 6-digit code was sent via SMS to <br/>
+              <span className="text-teal-600 tracking-wide">{watchedMobile}</span>
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 text-center">
+              Enter 6-Digit Code
+            </label>
+            <input
+              {...register("mobile_otp")} // MATCHES BACKEND
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              className="w-full text-center tracking-[0.7em] font-mono text-2xl px-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition-all"
+              placeholder="••••••"
+            />
+            {errors.mobile_otp && (
+              <p className="text-red-500 text-[10px] mt-1.5 font-bold text-center">{errors.mobile_otp.message}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setCurrentStep(1)}
+              disabled={isLoading}
+              className="w-1/3 py-3.5 px-4 bg-white border border-slate-200 text-slate-600 font-extrabold text-sm rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+            >
+              <ArrowLeft size={16} /> Edit
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !isStep2Valid}
+              className="w-2/3 flex items-center justify-center gap-2 py-3.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <><Loader2 className="animate-spin" size={18} /> Verifying...</>
+              ) : "Verify & Sign In"}
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );

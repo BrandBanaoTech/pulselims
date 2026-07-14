@@ -1,13 +1,34 @@
+// import { z } from "zod";
+
+// export const loginFormSchema = z.object({
+//   email: z
+//     .email("Please enter a valid email address.")
+//     .min(1, "Email is required.")
+//     .toLowerCase(),
+//   password: z
+//     .string()
+//     .min(1, "Password is required."),
+// });
+
+// export type LoginFormValues = z.infer<typeof loginFormSchema>;
+
 import { z } from "zod";
 
-export const loginFormSchema = z.object({
-  email: z
-    .email("Please enter a valid email address.")
-    .min(1, "Email is required.")
-    .toLowerCase(),
-  password: z
+const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+
+export const loginMobileSchema = z.object({
+  mobile: z
     .string()
-    .min(1, "Password is required."),
+    .trim()
+    .regex(phoneRegex, "Must be a valid mobile number (e.g., +919876543210)"),
 });
 
-export type LoginFormValues = z.infer<typeof loginFormSchema>;
+export const loginOtpSchema = z.object({
+  mobile_otp: z // MATCHES BACKEND
+    .string()
+    .length(6, "OTP must be exactly 6 digits")
+    .regex(/^\d+$/, "OTP must contain only numbers"),
+});
+
+export type LoginMobileValues = z.infer<typeof loginMobileSchema>;
+export type LoginOtpValues = z.infer<typeof loginOtpSchema>;
