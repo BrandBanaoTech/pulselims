@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, Uuid
+from sqlalchemy import Column, String, Boolean, DateTime, Uuid, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -22,6 +22,9 @@ class User(Base):
     is_active = Column(Boolean, default=False, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     is_platform_admin = Column(Boolean, default=False, nullable=False)
+
+    # 🏢 UX ENHANCEMENT: Remembers the user's last or primary workspace
+    default_lab_id = Column(Uuid(as_uuid=True), ForeignKey("labs.id", ondelete="SET NULL"), nullable=True)
     
     # Audit Timestamps for SOC2 / HIPAA Compliance
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -33,10 +36,21 @@ class User(Base):
     # cascade="all, delete-orphan": If a user deletes their account, 
     # the database automatically wipes their labs and staff access to comply with GDPR/Data Privacy laws.
     
+
     owned_labs = relationship(
         "Lab", 
         back_populates="owner", 
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        # 🚨 FIX: Explicitly tell SQLAlchemy which foreign key to use for ownership
+        foreign_keys="[Lab.owner_id]" 
+    )
+    
+    # 🏢 NEW: Formally map the default lab relationship to resolve ambiguity
+    default_lab = relationship(
+        "Lab",
+        foreign_keys=[default_lab_id],
+        # post_update=True breaks circular dependency deadlocks during database flushes
+        post_update=True 
     )
     
     memberships = relationship(
@@ -44,3 +58,15 @@ class User(Base):
         back_populates="user", 
         cascade="all, delete-orphan"
     )
+
+    # owned_labs = relationship(
+    #     "Lab", 
+    #     back_populates="owner", 
+    #     cascade="all, delete-orphan"
+    # )
+    
+    # memberships = relationship(
+    #     "LabMembership", 
+    #     back_populates="user", 
+    #     cascade="all, delete-orphan"
+    # )

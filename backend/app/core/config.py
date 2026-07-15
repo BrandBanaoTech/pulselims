@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     REDOC_URL: str = "/redoc"
     DEBUG: bool = True
     SECRET_KEY: str = config.get('SECRET_KEY')
+    DUMMY_HASH: str = config.get('DUMMY_HASH')
     ALGORITHM: str = config.get('ALGORITHM')
     ORIGINS: str = config.get('ORIGINS')
     ACCESS_TOKEN_EXPIRE_MINUTES: int = config.get('ACCESS_TOKEN_EXPIRE_MINUTES')

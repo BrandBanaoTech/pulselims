@@ -1,11 +1,10 @@
-import { AuthGuard } from "@/features/auth/components/AuthGuard";
-import { DashboardShell } from "@/features/labs/components/DashboardShell";
 import { ReactNode } from "react";
 import { Metadata } from "next";
-// import { CreateLabModal } from "@/components/models/CreateLabModal";
+import { AuthGuard } from "@/features/auth/components/AuthGuard";
+import { DashboardShell } from "@/features/dashboard/components/DashboardShell";
 
 export const metadata: Metadata = {
-  title: "Workspace | PulseLIMS",
+  title: "Clinical Workspace | PulseLIMS",
   description: "Enterprise Laboratory Information Management System",
 };
 
@@ -15,7 +14,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <DashboardShell>
         {children}
       </DashboardShell>
-    {/* //   <CreateLabModal /> */}
     </AuthGuard>
   );
 }
+// import { AuthGuard } from "@/features/auth/components/AuthGuard";
+// import { DashboardShell } from "@/features/labs/components/DashboardShell";
+// import { ReactNode } from "react";
+// import { Metadata } from "next";
+// // import { CreateLabModal } from "@/components/models/CreateLabModal";
+
+// export const metadata: Metadata = {
+//   title: "Workspace | PulseLIMS",
+//   description: "Enterprise Laboratory Information Management System",
+// };
+
+// export default function DashboardLayout({ children }: { children: ReactNode }) {
+//   return (
+//     <AuthGuard requireActiveLab={true}>
+//       <DashboardShell>
+//         {children}
+//       </DashboardShell>
+//     {/* //   <CreateLabModal /> */}
+//     </AuthGuard>
+//   );
+// }

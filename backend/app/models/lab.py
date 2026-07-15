@@ -46,5 +46,5 @@ class Lab(Base):
     # ==========================================
     # Because we separated the files, SQLAlchemy uses the string "LabMembership" 
     # to find the model without needing to import it at the top, preventing circular imports!
-    owner = relationship("User", back_populates="owned_labs")
+    owner = relationship("User", back_populates="owned_labs", foreign_keys=[owner_id])
     staff = relationship("LabMembership", back_populates="lab", cascade="all, delete-orphan")

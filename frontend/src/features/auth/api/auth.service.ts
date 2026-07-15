@@ -60,7 +60,7 @@ export interface LoginResponse {
 export const authService = {
 
  // 1. Request OTP
-  requestLoginOtp: async (data: { mobile: string }) => {
+  requestLoginOtp: async (data: { mobile: string; password?: string }) => {
     const response = await api.post("/auth/request-login-otp", data); // Ensure this path matches your endpoint
     return response.data; 
   },

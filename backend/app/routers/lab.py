@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, DataError
 
 # Adjust imports to match your project structure
 from ..core.database import get_db
-from ..api.deps import get_current_token_payload, require_lab_permission
+from ..api.deps import get_current_active_user, get_current_token_payload, require_lab_permission
 from ..schemas.auth import TokenPayload
 from ..core.security import verify_password
 from ..schemas.lab import LabCreate, LabDeletionChallenge, LabResponse, LabUpdate
@@ -24,16 +24,16 @@ router = APIRouter(prefix="/labs")
 def create_lab(
     lab_in: LabCreate,
     db: Session = Depends(get_db),
-    current_user: TokenPayload = Depends(get_current_token_payload) 
+    current_user: User = Depends(get_current_active_user)
 ):
     """
     Creates a new Lab Tenant.
     Enforces a strict 1:1 owner constraint and grants 'owner' rights atomically.
     """
-    user_uuid = uuid.UUID(current_user.sub)
+    # user_uuid = uuid.UUID(current_user.sub)
 
     # 🔒 ENFORCE 1:1 RULE: Ensure user doesn't already own a lab
-    existing_lab_stmt = select(Lab).where(Lab.owner_id == user_uuid)
+    existing_lab_stmt = select(Lab).where(Lab.owner_id == current_user.id)
     if db.execute(existing_lab_stmt).scalars().first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -48,7 +48,7 @@ def create_lab(
         contact_phone=lab_in.contact_phone,
         timezone=lab_in.timezone,
         address=lab_in.address.model_dump(), 
-        owner_id=user_uuid,
+        owner_id=current_user.id,
         # Brand assets can be added later via PUT/PATCH
         logo_url=str(lab_in.logo_url) if lab_in.logo_url else None,
         website=str(lab_in.website) if lab_in.website else None,
@@ -65,7 +65,7 @@ def create_lab(
 
     # 2. Create the strict Membership Mapping (Tenant-Scoped RBAC)
     membership = LabMembership(
-        user_id=user_uuid,
+        user_id=current_user.id,
         lab_id=new_lab.id,
         status="ACTIVE",
         permissions=["owner"] # 'owner' acts as a wildcard for all other permissions

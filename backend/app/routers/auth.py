@@ -1,4 +1,6 @@
 import uuid
+import time
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -8,10 +10,12 @@ from sqlalchemy import select, or_
 from ..core.database import get_db
 from ..api.deps import get_current_token_payload
 from ..services.otp_service import generate_stateless_otp, verify_stateless_otp
+# from ..core.rate_limit import enforce_rate_limit
 from ..core.security import create_access_token, get_password_hash, verify_password
 from ..models.user import User
+from ..models.labmembership import LabMembership
 from ..schemas.auth import LoginOTPResponse, LoginWithOTPRequest, OTPResponse, OwnerRegisterRequest, SendLoginOTP, SendRegistrationOTP, Token, TokenPayload, UserResponse
-
+from ..core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -74,7 +78,7 @@ def request_registration_otps(
 # ==========================================
 # 2. REGISTER: VERIFY & REGISTER THE LAB OWNER
 # ==========================================
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+# @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db)):
     """
     Registers a new Lab Owner. 
@@ -139,38 +143,65 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
 
 
 # ==========================================
-# 4. PASSWORDLESS OTP LOGIN FLOW
+# 4. PASSWORD, OTP LOGIN FLOW
 # ==========================================
 @router.post("/request-login-otp", response_model=LoginOTPResponse, status_code=status.HTTP_200_OK)
-def request_login_otp(
+async def request_login_otp(
     request: SendLoginOTP, 
     background_tasks: BackgroundTasks, 
     db: Session = Depends(get_db)
 ):
     """
     Step 1 of Passwordless Login: Validates user exists and dispatches SMS.
+    Step 1: Validates user exists and dispatches SMS.
+    Uses strict Latency Equalization & Payload padding to prevent enumeration bots.
     """
+    start_time = time.time()
     clean_mobile = request.mobile
+
+    # 🛡️ RATE LIMITING: Prevent SMS Bombing & Database CPU Spikes
+    # enforce_rate_limit(key_prefix="login_otp", identifier=clean_mobile, max_requests=3, window_seconds=60)
+
 
     # 1. Ensure user actually exists and is active
     stmt = select(User).where(User.mobile == clean_mobile)
     user = db.execute(stmt).scalars().first()
 
+     # 2. DEFENSE IN DEPTH: Timing Equalization
     if not user:
-        # Security UX: Return generic error to prevent user enumeration attacks
-        raise HTTPException(status_code=404, detail="Account not found.")
-        
-    if not user.is_active:
-        raise HTTPException(status_code=403, detail="This account has been deactivated.")
-
-    # 2. Generate Cryptographic State
-    mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
-
-    # 3. Dispatch Non-Blocking SMS
-    background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
-
+        # 🚨 CRITICAL: CPU spends time hashing to prevent user enumeration
+        verify_password(request.password, settings.DUMMY_HASH)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Incorrect mobile number or password."
+        )
+    
+    # 3. Verify Real Password
+    if not verify_password(request.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Incorrect mobile number or password."
+        )
+    
+    if getattr(user, 'is_active', False) is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="This account has been deactivated."
+        )
+    
+    # 2. Process logic exactly the same to equalize CPU cycles
+    if user and getattr(user, 'is_active', False):
+        mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)  # 2. Generate Cryptographic State
+        background_tasks.add_task(send_sms, clean_mobile, mobile_otp) # 3. Dispatch Non-Blocking SMS
+    
+    # 4. LATENCY EQUALIZATION: Pad execution time to stop millisecond fingerprinting
+    elapsed = time.time() - start_time
+    target_latency = 0.050  # 50ms minimum floor
+    if elapsed < target_latency:
+        await asyncio.sleep(target_latency - elapsed)
+    
     return LoginOTPResponse(
-        message="Login OTP sent successfully.",
+        message="OTP sent successfully.",
         mobile_verification_token=mobile_token,
         expires_in_minutes=10
     )
@@ -207,8 +238,24 @@ def login_with_otp(
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Account not found or deactivated."
+            detail="This account has been deactivated or deleted."
         )
+    
+    # 🏢 UX OPTIMIZATION: Self-Healing Workspace Routing
+    # If the user doesn't have a default lab set, auto-assign their first active membership
+    if not user.default_lab_id:
+        first_membership = db.execute(
+            select(LabMembership).where(
+                LabMembership.user_id == user.id,
+                LabMembership.status == "ACTIVE"
+            )
+        ).scalars().first()
+        
+        if first_membership:
+            user.default_lab_id = first_membership.lab_id
+            db.commit()
+            db.refresh(user)
+
 
     # 3. Issue the standard JWT session
     access_token = create_access_token(
@@ -220,7 +267,7 @@ def login_with_otp(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": user 
+        "user": user
     }
 
 

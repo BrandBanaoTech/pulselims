@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from ..core.config import settings
 from ..core.database import get_db
 from ..schemas.auth import TokenPayload
+from ..models.user import User
 from ..models.labmembership import LabMembership, MembershipStatus
 
 # ==========================================
@@ -59,6 +60,49 @@ def get_current_token_payload(token: str = Depends(oauth2_scheme)) -> TokenPaylo
 
 
 # ==========================================
+# ACTIVE USER VERIFICATION (Instant Revocation)
+# ==========================================
+def get_current_user(
+    db: Session = Depends(get_db),
+    token_payload: TokenPayload = Depends(get_current_token_payload)
+) -> User:
+    """
+    Takes the mathematically valid JWT, extracts the subject (UUID), 
+    and physically verifies the user still exists in the database.
+    """
+    user_uuid = uuid.UUID(token_payload.sub)
+    
+    # ⚡ FAST QUERY: Primary Key lookup (< 1ms)
+    user = db.execute(select(User).where(
+        User.id == user_uuid,
+        User.is_active == True,
+        User.is_verified == True
+        )).scalars().first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="The user no longer exists."
+        )
+    return user
+
+
+def get_current_active_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """
+    Ensures the user hasn't been deactivated by an admin.
+    Use this on EVERY generic route to prevent Zombie Tokens.
+    """
+    if getattr(current_user, 'is_active', True) is False:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Access revoked."
+        )
+    return current_user
+
+
+# ==========================================
 # TENANT-SCOPED RBAC DEPENDENCY FACTORY
 # ==========================================
 def require_lab_permission(required_permission: str) -> Callable:
@@ -85,8 +129,10 @@ def require_lab_permission(required_permission: str) -> Callable:
         # 🛡️ SECURITY CHECKS (Zero-Trust Architecture)
         if not membership:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You are not a member of this laboratory."
+                # status_code=status.HTTP_403_FORBIDDEN,
+                # detail="You are not a member of this laboratory."
+                status_code=status.HTTP_404_FORBIDDEN,
+                detail="404, Not found"
             )
         
         # Extract permissions once for efficiency
