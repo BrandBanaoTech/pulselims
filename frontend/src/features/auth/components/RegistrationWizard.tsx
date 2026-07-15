@@ -11,7 +11,7 @@ import { Loader2, AlertTriangle, ArrowRight, ArrowLeft, ShieldCheck, Mail, Smart
 
 export function RegistrationWizard() {
   const router = useRouter();
-  const setToken = useAuthStore((state) => state.setToken);
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   // UI State
   const [currentStep, setCurrentStep] = useState<1 | 2>(1);
@@ -99,9 +99,8 @@ export function RegistrationWizard() {
       };
 
       const response = await authService.registerOwner(payload);
-
-      // 1. Persist the access token to Zustand (which saves to localStorage)
-      setToken(response.access_token);
+      const defaultLabId = null;
+      setAuth(response.access_token, defaultLabId);
       
       // 2. Redirect to the main LIMS dashboard
       router.push("/onboarding");

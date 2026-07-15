@@ -57,7 +57,7 @@ export function DangerZoneTab({ labData }: DangerZoneTabProps) {
       
       // Wipe session memory and refresh token to strip deleted permissions
       await authService.refreshToken();
-      useAuthStore.getState().setActiveLabId(null);
+      // useAuthStore.getState().setActiveLabId(null);
       
       window.location.href = "/onboarding"; // Force redirect to create/join new lab
     } catch (error: any) {
