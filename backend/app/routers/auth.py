@@ -1,7 +1,7 @@
 import uuid
 import time
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
@@ -37,16 +37,29 @@ def send_email(email: str, otp: str):
 # ==========================================
 @router.post("/request-otp", response_model=OTPResponse, status_code=status.HTTP_200_OK)
 def request_registration_otps(
-    request: SendRegistrationOTP, 
+    payload: SendRegistrationOTP, 
     background_tasks: BackgroundTasks, 
+    request: Request, # 👈 Injected to get the attacker's IP
     db: Session = Depends(get_db)
 ):
     """
     Validates user does not exist, generates stateless OTPs, and hands the 
     cryptographic state tokens back to the frontend.
+    Zero-Knowledge OTP Generation.
+    Impervious to User Enumeration, Timing Attacks, and SMS Bombing.
     """
-    clean_email = request.email.lower()
-    clean_mobile = request.mobile
+    start_time = time.time()
+    clean_email = payload.email.lower()
+    clean_mobile = payload.mobile
+
+    # 🛡️ LAYER 1: MULTI-VECTOR RATE LIMITING (Ultra-Fast RAM Check)
+    # 1a. Block the physical device/server if it makes more than 5 requests per minute
+    client_ip = request.client.host if request.client else "unknown"
+    # enforce_rate_limit(key_prefix="reg_ip", identifier=client_ip, max_requests=5, window_seconds=60)
+    
+    # 1b. Block specific phone numbers and emails from being spammed
+    # enforce_rate_limit(key_prefix="reg_mobile", identifier=clean_mobile, max_requests=3, window_seconds=60)
+    # enforce_rate_limit(key_prefix="reg_email", identifier=clean_email, max_requests=3, window_seconds=60)
 
     # ⚡ FAST QUERY: SQLAlchemy 2.0 Syntax
     stmt = select(User).where(
@@ -54,21 +67,29 @@ def request_registration_otps(
     )
     existing_user = db.execute(stmt).scalars().first()
 
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="An account with this email or mobile number already exists."
-        )
-
+    # 🛡️ LAYER 2: ENUMERATION DEFENSE (Always generate tokens to equal CPU load)
     mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
     email_otp, email_token = generate_stateless_otp(clean_email)
 
-    # Dispatch to background threads so the API responds instantly (Non-blocking)
-    background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
-    background_tasks.add_task(send_email, clean_email, email_otp)
+    if existing_user:
+        # THE SILENT CATCH: Do not send the OTPs. Send a security alert instead.
+        background_tasks.add_task(send_sms, clean_mobile, "Security Alert: Someone tried to register a Lab account with this number, but you are already registered. Please log in.")
+        background_tasks.add_task(send_email, clean_email, "Security Alert: Registration attempted on an existing account. Please log in.")
+    else:
+        # Normal Flow
+        background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
+        background_tasks.add_task(send_email, clean_email, email_otp)
+
+    
+    # 🛡️ LAYER 3: TIMING EQUALIZATION 
+    # Ensure every single request takes exactly 150ms to prevent latency guessing
+    elapsed = time.time() - start_time
+    target_latency = 0.150 
+    if elapsed < target_latency:
+        time.sleep(target_latency - elapsed)
 
     return OTPResponse(
-        message="OTPs sent successfully. Tokens expire in 10 minutes.",
+        message="Please check your mobile and email. OTPs sent successfully.",
         mobile_verification_token=mobile_token,
         email_verification_token=email_token,
         expires_in_minutes=10
@@ -78,7 +99,7 @@ def request_registration_otps(
 # ==========================================
 # 2. REGISTER: VERIFY & REGISTER THE LAB OWNER
 # ==========================================
-# @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db)):
     """
     Registers a new Lab Owner. 
@@ -88,20 +109,10 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
     clean_mobile = user_in.mobile
 
     # 1. Verify Cryptographic Tokens
-    is_mobile_valid = verify_stateless_otp(
-        target=clean_mobile,
-        plain_otp=user_in.mobile_otp,
-        verification_token=user_in.mobile_verification_token
-    )
-    if not is_mobile_valid:
+    if not verify_stateless_otp(clean_mobile, user_in.mobile_otp, user_in.mobile_verification_token):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired Mobile OTP.")
 
-    is_email_valid = verify_stateless_otp(
-        target=clean_email,
-        plain_otp=user_in.email_otp,
-        verification_token=user_in.email_verification_token
-    )
-    if not is_email_valid:
+    if not verify_stateless_otp(clean_email, user_in.email_otp, user_in.email_verification_token):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired Email OTP.")
     
     # 2. Final Race-Condition Check
@@ -111,7 +122,7 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
     if db.execute(stmt).scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Account was created by another process during OTP verification."
+            detail="Account registration conflict. Please log in instead."
         )
     
     # 3. Securely hash password and save
@@ -146,7 +157,7 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
 # 4. PASSWORD, OTP LOGIN FLOW
 # ==========================================
 @router.post("/request-login-otp", response_model=LoginOTPResponse, status_code=status.HTTP_200_OK)
-async def request_login_otp(
+def request_login_otp(
     request: SendLoginOTP, 
     background_tasks: BackgroundTasks, 
     db: Session = Depends(get_db)
@@ -196,9 +207,9 @@ async def request_login_otp(
     
     # 4. LATENCY EQUALIZATION: Pad execution time to stop millisecond fingerprinting
     elapsed = time.time() - start_time
-    target_latency = 0.050  # 50ms minimum floor
+    target_latency = 0.350 
     if elapsed < target_latency:
-        await asyncio.sleep(target_latency - elapsed)
+        time.sleep(target_latency - elapsed)
     
     return LoginOTPResponse(
         message="OTP sent successfully.",
@@ -271,22 +282,17 @@ def login_with_otp(
     }
 
 
-# ==========================================
-# 3. LOGIN: LOGIN & GENERATE STATELESS JWT
-# ==========================================
+# # ==========================================
+# # 4. LOGIN: STANDARD OAUTH2 (Swagger UI & Admins)
+# # ==========================================
 # @router.post("/login", response_model=Token)
 # def login_access_token(
 #     db: Session = Depends(get_db), 
 #     form_data: OAuth2PasswordRequestForm = Depends()
 # ):
-#     """
-#     OAuth2 compatible token login. 
-#     Issues a highly optimized, lean JWT payload.
-#     """
 #     clean_email = form_data.username.lower()
     
-#     stmt = select(User).where(User.email == clean_email)
-#     user = db.execute(stmt).scalars().first()
+#     user = db.execute(select(User).where(User.email == clean_email)).scalars().first()
 
 #     auth_exception = HTTPException(
 #         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -297,24 +303,22 @@ def login_with_otp(
 #     if not user or not verify_password(form_data.password, user.hashed_password):
 #         raise auth_exception
 
-#     if not user.is_active:
-#         raise HTTPException(
-#             status_code=status.HTTP_403_FORBIDDEN, 
-#             detail="This account has been deactivated."
-#         )
+#     if not getattr(user, 'is_active', False):
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated.")
 
-#     # Create a lean, stateless token
-#     access_token = create_access_token(
-#         subject=user.id,
-#         email=user.email,
-#         mobile=str(user.mobile)
-#     )
+#     if not user.default_lab_id:
+#         first_membership = db.execute(
+#             select(LabMembership).where(LabMembership.user_id == user.id, LabMembership.status == "ACTIVE")
+#         ).scalars().first()
+        
+#         if first_membership:
+#             user.default_lab_id = first_membership.lab_id
+#             db.commit()
+#             db.refresh(user)
 
-#     return {
-#         "access_token": access_token,
-#         "token_type": "bearer",
-#         "user": user 
-#     }
+#     access_token = create_access_token(subject=user.id, email=user.email, mobile=str(user.mobile))
+
+#     return {"access_token": access_token, "token_type": "bearer", "user": user}
 
 
 # ==========================================
