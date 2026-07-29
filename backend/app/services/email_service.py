@@ -3,7 +3,7 @@ from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from ..core.config import settings
 
-# 🛡️ COMPLIANCE: Configure secure logger
+# 🛡️ COMPLIANCE: Secure audit logger (Mandatory for SOC2 / HIPAA)
 logger = logging.getLogger(__name__)
 
 # ==========================================
@@ -22,7 +22,22 @@ conf = ConnectionConfig(
     TIMEOUT=10             # Prevents SMTP server lag from hanging your API background workers
 )
 
+# Singleton instantiation for memory efficiency
 fast_mail = FastMail(conf)
+
+
+# ==========================================
+# HELPER: COMPLIANT DATA MASKING
+# ==========================================
+def mask_email(email: str) -> str:
+    """Safely masks an email for SOC2 compliant logging without crashing on short strings."""
+    try:
+        username, domain = str(email).split('@')
+        if len(username) <= 2:
+            return f"{username[0]}***@{domain}"
+        return f"{username[0]}***{username[-1]}@{domain}"
+    except ValueError:
+        return "***@***.***"
 
 
 # ==========================================
@@ -44,17 +59,15 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
     
     <div style="background-color: #ffffff; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
         
-        <!-- ================= HEADER (LOGO & BRAND) ================= -->
+        <!-- HEADER -->
         <div style="text-align: center; padding: 32px 20px 24px; border-bottom: 1px solid #f1f5f9;">
-            <!-- Replace the src with your actual logo URL -->
             <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwZjc2NmUiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1oZWFydC1wdWxzZS1pY29uIGx1Y2lkZS1oZWFydC1wdWxzZSI+PHBhdGggZD0iTTIgOS41YTUuNSA1LjUgMCAwIDEgOS41OTEtMy42NzYuNTYuNTYgMCAwIDAgLjgxOCAwQTUuNDkgNS40OSAwIDAgMSAyMiA5LjVjMCAyLjI5LTEuNSA0LTMgNS41bC01LjQ5MiA1LjMxM2EyIDIgMCAwIDEtMyAuMDE5TDUgMTVjLTEuNS0xLjUtMy0zLjItMy01LjUiLz48cGF0aCBkPSJNMy4yMiAxM0g5LjVsLjUtMSAyIDQuNSAyLTcgMS41IDMuNWg1LjI3Ii8+PC9zdmc+" alt="Company Logo" style="width: 56px; height: 56px; vertical-align: middle; margin-bottom: 12px;" />
             <h1 style="margin: 0; font-size: 22px; color: #0f766e; font-weight: 700; letter-spacing: -0.5px;">PulseLIMS</h1>
         </div>
 
-        <!-- ================= MAIN CONTENT ================= -->
+        <!-- MAIN CONTENT -->
         <div style="padding: 40px 32px;">
             <h2 style="margin: 0 0 24px; color: #0f172a; font-size: 20px; font-weight: 600;">Secure Verification Code</h2>
-            
             <p style="margin: 0 0 16px; color: #475569; font-size: 16px; line-height: 1.6;">Hello,</p>
             <p style="margin: 0 0 32px; color: #475569; font-size: 16px; line-height: 1.6;">You are almost ready to access your laboratory workspace. Please use the secure verification code below to confirm your identity and complete your registration.</p>
             
@@ -68,24 +81,23 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
             </p>
         </div>
 
-        <!-- ================= FOOTER ================= -->
+        <!-- FOOTER -->
         <div style="background-color: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
             <p style="margin: 0 0 12px; color: #94a3b8; font-size: 12px; line-height: 1.5;">
                 If you did not request this email, please ignore it or <a href="#" style="color: #0f766e; text-decoration: underline;">contact our security team</a>.
             </p>
             <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                &copy; 2026 PulseLIIMS. All rights reserved.
+                &copy; 2026 PulseLIMS. All rights reserved.
             </p>
         </div>
         
     </div>
-
 </body>
 </html>
 """
 
     message = MessageSchema(
-        subject=f"{otp_code} is your Lab verification code",
+        subject=f"{otp_code} is your PulseLIMS verification code",
         recipients=[target_email],
         body=html_content,
         subtype=MessageType.html
@@ -93,11 +105,24 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
 
     try:
         await fast_mail.send_message(message)
-        # 🛡️ COMPLIANCE: Mask email in logs (e.g., d***r@gmail.com). NEVER log the OTP.
-        masked_email = f"{target_email[0]}***{target_email[target_email.index('@') - 1:]}"
-        logger.info(f"✅ Secure OTP dispatched to {masked_email}")
+        masked_email = mask_email(target_email)
+        
+        # PROD: Clean, parsable string. Extra context passed to JSON renderer.
+        logger.info(
+            "Secure OTP dispatched successfully", 
+            extra={"action": "otp_sent", "target": masked_email}
+        )
     except Exception as e:
-        logger.error(f"❌ SMTP Failure for {masked_email}. Cause: {str(e)[:50]}")
+        masked_email = mask_email(target_email)
+        
+        # PROD: exc_info=True captures the FULL stack trace for your log aggregator.
+        # F-strings are avoided here so aggregators group the errors under a single hash.
+        logger.error(
+            "SMTP Failure during OTP dispatch for %s", 
+            masked_email, 
+            extra={"action": "otp_failed", "target": masked_email},
+            exc_info=True 
+        )
 
 
 async def send_security_alert(target_email: EmailStr):
@@ -116,41 +141,37 @@ async def send_security_alert(target_email: EmailStr):
         
         <div style="background-color: #ffffff; max-width: 600px; margin: 0 auto; border-radius: 12px; border: 1px solid #e2e8f0; border-top: 5px solid #dc2626; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
             
-            <!-- ================= HEADER (LOGO & BRAND) ================= -->
+            <!-- HEADER -->
             <div style="padding: 32px 32px 24px; border-bottom: 1px solid #f1f5f9; text-align: left;">
                 <span style="font-size: 20px; color: #0f172a; font-weight: 700; vertical-align: middle; letter-spacing: -0.5px;">PulseLIMS</span>
             </div>
 
-            <!-- ================= MAIN CONTENT ================= -->
+            <!-- MAIN CONTENT -->
             <div style="padding: 32px;">
-                <h2 style="margin: 0 0 16px; color: #0f172a; font-size: 22px; font-weight: 700;">Security Alert: New Sign-in Detected</h2>
+                <h2 style="margin: 0 0 16px; color: #0f172a; font-size: 22px; font-weight: 700;">Security Alert: Registration Attempt</h2>
                 
                 <p style="margin: 0 0 24px; color: #475569; font-size: 16px; line-height: 1.6;">
-                    We noticed a new sign-in to your master administrative account from a device or location we don't recognize. 
+                    Someone recently attempted to register a new PulseLIMS account using this email address. Because this email is already registered to an active account, we blocked the registration attempt to protect your data. 
                 </p>
                 
-                <!-- SECURITY DETAILS BLOCK -->
-                
-                <!-- CALL TO ACTION (CTA) -->
                 <h3 style="margin: 0 0 12px; font-size: 16px; color: #0f172a; font-weight: 600;">Was this you?</h3>
                 <p style="margin: 0 0 24px; color: #475569; font-size: 15px; line-height: 1.6;">
-                    If you recognize this activity, you can safely ignore this email. If this wasn't you, your account may be compromised. Please secure your account immediately.
+                    If you were simply trying to log in and accidentally went to the registration page, you can safely ignore this email and return to the sign-in page. If this wasn't you, your account remains secure, but you may want to update your password if you feel it has been compromised.
                 </p>
             </div>
 
-            <!-- ================= FOOTER ================= -->
+            <!-- FOOTER -->
             <div style="background-color: #f8fafc; padding: 24px 32px; text-align: left; border-top: 1px solid #e2e8f0;">
                 <p style="margin: 0 0 8px; color: #64748b; font-size: 13px; line-height: 1.5;">
-                    Security Tip: We will never ask for your password via email.
+                    Security Tip: We will never ask for your password or OTP via email.
                 </p>
                 <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                    This is an automated security alert generated by YourLab LIMS. <br>
-                    &copy; 2026  PulseLIMS. All rights reserved.
+                    This is an automated security alert generated by PulseLIMS. <br>
+                    &copy; 2026 PulseLIMS. All rights reserved.
                 </p>
             </div>
             
         </div>
-
     </body>
     </html>
     """
@@ -164,7 +185,18 @@ async def send_security_alert(target_email: EmailStr):
 
     try:
         await fast_mail.send_message(message)
-        masked_email = f"{target_email[0]}***{target_email[target_email.index('@') - 1:]}"
-        logger.warning(f"⚠️ Security Alert dispatched to {masked_email}")
+        masked_email = mask_email(target_email)
+        
+        logger.warning(
+            "Security Alert dispatched due to registration conflict", 
+            extra={"action": "security_alert_sent", "target": masked_email}
+        )
     except Exception as e:
-        logger.error(f"❌ Failed to send security alert: {str(e)[:50]}")
+        masked_email = mask_email(target_email)
+        
+        logger.error(
+            "Failed to send security alert to %s", 
+            masked_email, 
+            extra={"action": "security_alert_failed", "target": masked_email},
+            exc_info=True
+        )
