@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = config.get('ACCESS_TOKEN_EXPIRE_MINUTES')
     DATABASE_URL: str = config.get('DATABASE_URL')
 
+    MAIL_USERNAME: str = config.get('MAIL_USERNAME')
+    MAIL_PASSWORD: str =config.get('MAIL_PASSWORD')
+    MAIL_FROM: str =config.get('MAIL_FROM')
+    MAIL_PORT: str =config.get('MAIL_PORT')
+    MAIL_SERVER: str =config.get('MAIL_SERVER')
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive = True, extra="ignore")
 
     @property

@@ -1,26 +1,26 @@
 import { z } from "zod";
 
 // 1. Regex Matchers mirroring Pydantic parameters exactly
-const phoneRegex = /^\+?[1-9]\d{1,14}$/; // International E.164 structure
+const phoneRegex =/^\d{7,15}$/; // International E.164 structure
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/;
 
 // 2. Base Client-Side Input Schemas
 export const stepOneSchema = z.object({
   full_name: z
     .string()
-    .min(2, "Full name must be at least 2 characters.")
+    .min(2, "Full name is required.")
     .max(150, "Full name cannot exceed 150 characters.")
     .trim()
     .refine((val) => val.length > 0, { message: "Full name cannot be empty spaces." }),
   
   email: z
-    .email("Please provide a valid, secure email address.")
+    .email("Please enter valid, secure email address.")
     .toLowerCase(),
   
   mobile: z
     .string()
-    .regex(phoneRegex, "Phone number must match E.164 standards (e.g., +919876543210).")
-    .min(10, "Mobile input too short.")
+    .regex(phoneRegex, "Please enter valid Phone number.")
+    .min(7, "Mobile input too short.")
     .max(15, "Mobile input too long."),
   
   password: z
@@ -33,12 +33,13 @@ export const stepOneSchema = z.object({
 });
 
 export const stepTwoSchema = z.object({
-  mobile_otp: z.string().length(6, "Mobile verification code must be exactly 6 digits."),
+  // mobile_otp: z.string().length(6, "Mobile verification code must be exactly 6 digits."),
+  mobile_otp: z.string().optional(),
   email_otp: z.string().length(6, "Email verification code must be exactly 6 digits."),
 });
 
 // 3. Complete Compound Architecture mapping OwnerRegisterRequest
-export const registerFormSchema = stepOneSchema.merge(stepTwoSchema);
+export const registerFormSchema = stepOneSchema.extend(stepTwoSchema.shape);
 
 export type RegisterFormValues = z.infer<typeof registerFormSchema>;
 export type StepOneValues = z.infer<typeof stepOneSchema>;

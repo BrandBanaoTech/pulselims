@@ -128,7 +128,7 @@ export function LoginForm() {
         <p className="text-slate-500 mt-1 text-sm font-medium">
           {currentStep === 1 
             ? "Enter your credentials to sign in." 
-            : "Enter the secure code sent to your phone."}
+            : "Enter the secure code sent to your email."}
         </p>
       </div>
 
@@ -205,8 +205,10 @@ export function LoginForm() {
           <div className="p-4 bg-teal-50 border border-teal-100 rounded-xl flex items-start gap-3 mb-2">
             <ShieldCheck className="text-teal-600 shrink-0 mt-0.5" size={18} />
             <p className="text-xs font-bold text-teal-800 leading-relaxed">
-              A 6-digit code was sent via SMS to <br/>
-              <span className="text-teal-600 tracking-wide font-mono">{watchedMobile}</span>
+              <span>A OTP was sent to your </span>
+              <span className="text-teal-600 tracking-wide font-mono">Email</span> 
+              <span> Please check your Email.</span>
+              {/* <span className="text-teal-600 tracking-wide font-mono">{watchedMobile}</span> */}
             </p>
           </div>
 
