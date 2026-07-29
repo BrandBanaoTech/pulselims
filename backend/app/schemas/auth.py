@@ -80,8 +80,8 @@ class SendLoginOTP(BaseModel):
 # ==========================================
 class OTPResponse(BaseModel):
     message: str = Field(default="OTPs sent successfully.")
-    mobile_verification_token: str = Field(..., description="State token for mobile verification.")
     email_verification_token: str = Field(..., description="State token for email verification.")
+    mobile_verification_token: str = Field(..., description="State token for mobile verification.")
     expires_in_minutes: int = Field(default=10)
 
 class LoginOTPResponse(BaseModel):
@@ -98,7 +98,8 @@ class OwnerRegisterRequest(UserBase):
     password: StrongPassword
     
     # 6-DIGIT CODES TYPED BY THE USER
-    mobile_otp: str = Field(..., min_length=6, max_length=6, description="6-digit mobile OTP")
+    # mobile_otp: str = Field(..., min_length=6, max_length=6, description="6-digit mobile OTP")
+    mobile_otp: Optional[str] = Field(...,max_length=6, description="invalid error!")
     email_otp: str = Field(..., min_length=6, max_length=6, description="6-digit email OTP")
 
     # STATELESS TOKENS RETURNED BY THE FRONTEND
@@ -109,8 +110,8 @@ class OwnerRegisterRequest(UserBase):
     def validate_conditional_otps(self) -> 'OwnerRegisterRequest':
         if self.email and not self.email_otp:
             raise ValueError("An Email OTP is required because an email address was provided.")
-        if self.mobile and not self.mobile_otp:
-            raise ValueError("A Mobile OTP is required because a mobile number was provided.")
+        # if self.mobile:
+        #     raise ValueError("A Mobile Number is required.")
         return self
     
 

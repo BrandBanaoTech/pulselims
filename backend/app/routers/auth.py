@@ -12,6 +12,7 @@ from ..api.deps import get_current_token_payload
 from ..services.otp_service import generate_stateless_otp, verify_stateless_otp
 # from ..core.rate_limit import enforce_rate_limit
 from ..core.security import create_access_token, get_password_hash, verify_password
+from ..services.email_service import send_registration_otp, send_security_alert
 from ..models.user import User
 from ..models.labmembership import LabMembership
 from ..schemas.auth import LoginOTPResponse, LoginWithOTPRequest, OTPResponse, OwnerRegisterRequest, SendLoginOTP, SendRegistrationOTP, Token, TokenPayload, UserResponse
@@ -54,7 +55,7 @@ def request_registration_otps(
 
     # 🛡️ LAYER 1: MULTI-VECTOR RATE LIMITING (Ultra-Fast RAM Check)
     # 1a. Block the physical device/server if it makes more than 5 requests per minute
-    client_ip = request.client.host if request.client else "unknown"
+    # client_ip = request.client.host if request.client else "unknown"
     # enforce_rate_limit(key_prefix="reg_ip", identifier=client_ip, max_requests=5, window_seconds=60)
     
     # 1b. Block specific phone numbers and emails from being spammed
@@ -68,17 +69,18 @@ def request_registration_otps(
     existing_user = db.execute(stmt).scalars().first()
 
     # 🛡️ LAYER 2: ENUMERATION DEFENSE (Always generate tokens to equal CPU load)
-    mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
+    # mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
     email_otp, email_token = generate_stateless_otp(clean_email)
 
     if existing_user:
         # THE SILENT CATCH: Do not send the OTPs. Send a security alert instead.
-        background_tasks.add_task(send_sms, clean_mobile, "Security Alert: Someone tried to register a Lab account with this number, but you are already registered. Please log in.")
-        background_tasks.add_task(send_email, clean_email, "Security Alert: Registration attempted on an existing account. Please log in.")
+        # background_tasks.add_task(send_sms, clean_mobile, "Security Alert: Someone tried to register a Lab account with this number, but you are already registered. Please log in.")
+        # background_tasks.add_task(send_security_alert, clean_email, "Security Alert: Registration attempted on an existing account. Please log in.")
+        background_tasks.add_task(send_security_alert, clean_email)
     else:
         # Normal Flow
-        background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
-        background_tasks.add_task(send_email, clean_email, email_otp)
+        # background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
+        background_tasks.add_task(send_registration_otp, clean_email, email_otp)
 
     
     # 🛡️ LAYER 3: TIMING EQUALIZATION 
@@ -89,9 +91,9 @@ def request_registration_otps(
         time.sleep(target_latency - elapsed)
 
     return OTPResponse(
-        message="Please check your mobile and email. OTPs sent successfully.",
-        mobile_verification_token=mobile_token,
+        message="Please check your email. OTPs sent successfully.",
         email_verification_token=email_token,
+        mobile_verification_token="",
         expires_in_minutes=10
     )
 
@@ -109,8 +111,8 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
     clean_mobile = user_in.mobile
 
     # 1. Verify Cryptographic Tokens
-    if not verify_stateless_otp(clean_mobile, user_in.mobile_otp, user_in.mobile_verification_token):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired Mobile OTP.")
+    # if not verify_stateless_otp(clean_mobile, user_in.mobile_otp, user_in.mobile_verification_token):
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired Mobile OTP.")
 
     if not verify_stateless_otp(clean_email, user_in.email_otp, user_in.email_verification_token):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired Email OTP.")
@@ -202,8 +204,10 @@ def request_login_otp(
     
     # 2. Process logic exactly the same to equalize CPU cycles
     if user and getattr(user, 'is_active', False):
-        mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)  # 2. Generate Cryptographic State
-        background_tasks.add_task(send_sms, clean_mobile, mobile_otp) # 3. Dispatch Non-Blocking SMS
+        email_otp, email_token = generate_stateless_otp(user.email)
+        background_tasks.add_task(send_registration_otp, user.email, email_otp)
+        # mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)  # 2. Generate Cryptographic State
+        # background_tasks.add_task(send_sms, clean_mobile, mobile_otp) # 3. Dispatch Non-Blocking SMS
     
     # 4. LATENCY EQUALIZATION: Pad execution time to stop millisecond fingerprinting
     elapsed = time.time() - start_time
@@ -213,7 +217,7 @@ def request_login_otp(
     
     return LoginOTPResponse(
         message="OTP sent successfully.",
-        mobile_verification_token=mobile_token,
+        mobile_verification_token=email_token,
         expires_in_minutes=10
     )
 
@@ -229,9 +233,13 @@ def login_with_otp(
     """
     clean_mobile = request.mobile
 
+    # 2. Fetch User
+    stmt = select(User).where(User.mobile == clean_mobile)
+    user = db.execute(stmt).scalars().first()
+
     # 1. Verify Cryptographic Token
     is_valid = verify_stateless_otp(
-        target=clean_mobile,
+        target=user.email,
         plain_otp=request.mobile_otp,
         verification_token=request.mobile_verification_token
     )
@@ -242,9 +250,6 @@ def login_with_otp(
             detail="Invalid or expired OTP."
         )
 
-    # 2. Fetch User
-    stmt = select(User).where(User.mobile == clean_mobile)
-    user = db.execute(stmt).scalars().first()
 
     if not user or not user.is_active:
         raise HTTPException(
