@@ -23,6 +23,12 @@ class User(Base):
     is_verified = Column(Boolean, default=False, nullable=False)
     is_platform_admin = Column(Boolean, default=False, nullable=False)
 
+    # 🔒 TOTP Fields
+    totp_secret = Column(String, nullable=True)
+    is_totp_enabled = Column(Boolean, default=False)
+    # Store backup codes as hashed strings, or a JSON array
+    backup_codes = Column(String, nullable=True)
+
     # 🏢 UX ENHANCEMENT: Remembers the user's last or primary workspace
     default_lab_id = Column(Uuid(as_uuid=True), ForeignKey("labs.id", ondelete="SET NULL"), nullable=True)
     

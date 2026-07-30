@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.routers import auth, lab, membership, user
+from app.routers import auth, lab, membership, user, totp
 from .core.config import settings
 
 
@@ -45,6 +45,7 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 # 3. REGISTER ROUTERS
 # ==========================================
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}", tags=["Authentication"])
+app.include_router(totp.router, prefix=f"{settings.API_V1_STR}", tags=["2FA"])
 app.include_router(lab.router, prefix=f"{settings.API_V1_STR}", tags=["Laboratories"])
 app.include_router(membership.router, prefix=f"{settings.API_V1_STR}", tags=["Staff Management"])
 app.include_router(user.router,  prefix=f"{settings.API_V1_STR}", tags=["Users"])
