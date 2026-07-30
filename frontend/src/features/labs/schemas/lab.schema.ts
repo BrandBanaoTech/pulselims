@@ -29,11 +29,11 @@ export const addressSchema = z.object({
 // 2. CREATE LABSPACE SCHEMA (Strict)
 // ==========================================
 export const createLabSchema = z.object({
-  name: z.string().trim().min(2, "Lab name must be at least 2 characters.").max(255),
+  name: z.string().trim().min(2, "LabSpace name should not be empty.").max(255),
   license_number: z.string().trim().max(100).nullable().optional(),
   
   support_email: z.email("Must be a valid email address.").trim().toLowerCase(),
-  contact_phone: z.string().trim().regex(phoneRegex, "Must match E.164 format (e.g., +919876543210)"),
+  contact_phone: z.string().trim().regex(phoneRegex, "Must be a valid phone number."),
   timezone: z.string().trim(),
   
   // URLs use the shared safe parser
