@@ -1,16 +1,17 @@
 import uuid
 import time
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_
+from slowapi.util import get_remote_address
 
 # Adjust imports to match your project structure
 from ..core.database import get_db
 from ..api.deps import get_current_token_payload
 from ..services.otp_service import generate_stateless_otp, verify_stateless_otp
-# from ..core.rate_limit import enforce_rate_limit
+from ..core.rate_limit import limiter, get_client_ip
 from ..core.security import create_access_token, get_password_hash, verify_password
 from ..services.email_service import send_registration_otp, send_security_alert
 from ..models.user import User
@@ -37,6 +38,7 @@ def send_email(email: str, otp: str):
 # 1. REGISTER: REQUEST OTPs (Stateless Cryptography)
 # ==========================================
 @router.post("/request-otp", response_model=OTPResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("3/hour")
 def request_registration_otps(
     payload: SendRegistrationOTP, 
     background_tasks: BackgroundTasks, 
@@ -56,6 +58,7 @@ def request_registration_otps(
     # 🛡️ LAYER 1: MULTI-VECTOR RATE LIMITING (Ultra-Fast RAM Check)
     # 1a. Block the physical device/server if it makes more than 5 requests per minute
     # client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     # enforce_rate_limit(key_prefix="reg_ip", identifier=client_ip, max_requests=5, window_seconds=60)
     
     # 1b. Block specific phone numbers and emails from being spammed
@@ -159,8 +162,10 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
 # 4. PASSWORD, OTP LOGIN FLOW
 # ==========================================
 @router.post("/request-login-otp", response_model=LoginOTPResponse, status_code=status.HTTP_200_OK)
+@limiter.limit("3/hour")
 def request_login_otp(
-    request: SendLoginOTP, 
+    request: Request,
+    payload: SendLoginOTP, 
     background_tasks: BackgroundTasks, 
     db: Session = Depends(get_db)
 ):
@@ -170,8 +175,9 @@ def request_login_otp(
     Uses strict Latency Equalization & Payload padding to prevent enumeration bots.
     """
     start_time = time.time()
-    clean_mobile = request.mobile
-
+    client_ip = get_client_ip(request)
+    clean_mobile = payload.mobile  # as of now it is email
+    password = payload.password
     # 🛡️ RATE LIMITING: Prevent SMS Bombing & Database CPU Spikes
     # enforce_rate_limit(key_prefix="login_otp", identifier=clean_mobile, max_requests=3, window_seconds=60)
 
@@ -183,14 +189,14 @@ def request_login_otp(
      # 2. DEFENSE IN DEPTH: Timing Equalization
     if not user:
         # 🚨 CRITICAL: CPU spends time hashing to prevent user enumeration
-        verify_password(request.password, settings.DUMMY_HASH)
+        verify_password(password, settings.DUMMY_HASH)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Incorrect mobile number or password."
         )
     
     # 3. Verify Real Password
-    if not verify_password(request.password, user.hashed_password):
+    if not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Incorrect mobile number or password."
@@ -359,3 +365,10 @@ def refresh_access_token(
         "token_type": "bearer",
         "user": user 
     }
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """Clears the refresh token cookie, effectively logging the user out."""
+    response.delete_cookie("refresh_token")
+    return {"message": "Successfully logged out"}

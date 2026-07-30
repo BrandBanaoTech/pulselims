@@ -1,4 +1,3 @@
-import os
 from typing import List
 from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
