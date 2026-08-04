@@ -131,17 +131,17 @@ export function LoginForm() {
       
       // Extract the JWT and User Profile from the `Token` response
       const token = response.access_token;
-      const defaultLabId = response.user?.default_lab_id || null;
-      console.log('login -> ' + defaultLabId)
+      const defaultLab = response.user?.default_lab || null;
+      const userData = response.user;
 
       // Hydrate Zustand state immediately
-      setAuth(token, defaultLabId);
+      setAuth(token, defaultLab, userData);
       
       // Route transition (AuthGuard will handle the final destination automatically)
-      if (defaultLabId && token) {
+      if (defaultLab && token) {
         router.push("/dashboard");
       }
-      else if (!defaultLabId && token) {
+      else if (!defaultLab && token) {
         router.push('/onboarding')
       } 
       else {

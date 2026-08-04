@@ -139,7 +139,7 @@ import { Building2, MapPin, Settings } from "lucide-react";
 
 export function TenantSwitcher() {
   const router = useRouter();
-  const { activeLabId, setActiveLabId } = useAuthStore();
+  const { activeLab, setActiveLab } = useAuthStore();
   
   const [workspace, setWorkspace] = useState<LabResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,14 +153,14 @@ export function TenantSwitcher() {
         
         if (isMounted && data.length > 0) {
           // 1. AUTO-SELECT LOGIC: Pick the user's lab automatically
-          const targetLab = activeLabId ? data.find(l => l.id === activeLabId) || data[0] : data[0];
+          // const targetLab = activeLab ? data.find(l => l.id === activeLab) || data[0] : data[0];
           
-          // 2. Hydrate global state if it's missing
-          if (!activeLabId || activeLabId !== targetLab.id) {
-            setActiveLabId(targetLab.id);
-          }
+          // // 2. Hydrate global state if it's missing
+          // if (!activeLab || activeLab !== targetLab.id) {
+          //   setActiveLab(targetLab);
+          // }
           
-          setWorkspace(targetLab);
+          // setWorkspace(targetLab);
         }
       } catch (error) {
         console.error("Failed to fetch workspaces", error);
@@ -172,7 +172,7 @@ export function TenantSwitcher() {
     fetchLabs();
     
     return () => { isMounted = false; };
-  }, [activeLabId, setActiveLabId]);
+  }, [activeLab, setActiveLab]);
 
   if (isLoading) {
     return (

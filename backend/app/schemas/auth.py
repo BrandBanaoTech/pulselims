@@ -141,6 +141,16 @@ class LoginWithOTPRequest(BaseModel):
     mobile_verification_token: str = Field(..., description="The JWT state token returned in Step 1")
     
 
+class UserLoginData(BaseModel):
+    email: str = Field(default=False)
+    full_name: str = Field(default=False)
+    mobile: str = Field(default=False)
+    default_lab: str = Field(default=False)
+    role: str = Field(default=False)
+    permissions: str = Field(default=False)
+    theme_preference: str = Field(default=False)
+
+
 # ==========================================
 # STATELESS TOKEN ARCHITECTURE
 # ==========================================
@@ -153,7 +163,7 @@ class TokenPayload(BaseModel):
 class Token(BaseModel):
     access_token: str = Field(..., description="The cryptographically signed JWT bearer token string.")
     token_type: str = Field(default="bearer")
-    user: UserResponse = Field(..., description="The filtered user details profile to initialize client-side states.")
+    user: UserLoginData = Field(..., description="The filtered user details profile to initialize client-side states.")
     
 # import re
 # from datetime import datetime, timezone

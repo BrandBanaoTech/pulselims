@@ -15,14 +15,14 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Access Zustand state outside of React components
-    const { token, activeLabId } = useAuthStore.getState();
+    const { token, activeLab } = useAuthStore.getState();
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    if (activeLabId) {
-      config.headers['X-Lab-ID'] = activeLabId;
+    if (activeLab) {
+      config.headers['X-Lab-ID'] = activeLab;
     }
 
     return config;

@@ -52,7 +52,7 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 # ==========================================
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}", tags=["Authentication"])
 app.include_router(lab.router, prefix=f"{settings.API_V1_STR}", tags=["Laboratories"])
-app.include_router(membership.router, prefix=f"{settings.API_V1_STR}", tags=["Staff Management"])
+# app.include_router(membership.router, prefix=f"{settings.API_V1_STR}", tags=["Staff Management"])
 app.include_router(user.router,  prefix=f"{settings.API_V1_STR}", tags=["Users"])
 
 # ==========================================
