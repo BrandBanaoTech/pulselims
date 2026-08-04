@@ -26,7 +26,7 @@ const countryCodes = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { setActiveLabId } = useAuthStore();
+  const { setActiveLab } = useAuthStore();
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Phone Dropdown State
@@ -122,7 +122,7 @@ export default function OnboardingPage() {
       await authService.refreshToken(); 
 
       // Set Active Lab and Unlock Dashboard
-      setActiveLabId(newLab.id);
+      setActiveLab(newLab.name);
       window.location.href = "/dashboard"; 
       
     } catch (error: any) {

@@ -162,7 +162,7 @@ def register_owner(user_in: OwnerRegisterRequest, db: Session = Depends(get_db))
 # 4. PASSWORD, OTP LOGIN FLOW
 # ==========================================
 @router.post("/request-login-otp", response_model=LoginOTPResponse, status_code=status.HTTP_200_OK)
-@limiter.limit("3/hour")
+# @limiter.limit("3/hour")
 def request_login_otp(
     request: Request,
     payload: SendLoginOTP, 
@@ -211,7 +211,8 @@ def request_login_otp(
     # 2. Process logic exactly the same to equalize CPU cycles
     if user and getattr(user, 'is_active', False):
         email_otp, email_token = generate_stateless_otp(user.email)
-        background_tasks.add_task(send_registration_otp, user.email, email_otp)
+        background_tasks.add_task(send_email, user.email, email_otp)
+        # background_tasks.add_task(send_registration_otp, user.email, email_otp)
         # mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)  # 2. Generate Cryptographic State
         # background_tasks.add_task(send_sms, clean_mobile, mobile_otp) # 3. Dispatch Non-Blocking SMS
     
@@ -272,12 +273,30 @@ def login_with_otp(
                 LabMembership.status == "ACTIVE"
             )
         ).scalars().first()
-        
         if first_membership:
             user.default_lab_id = first_membership.lab_id
             db.commit()
             db.refresh(user)
 
+    user_role = "Admin"
+    # user_permissions = ["manage_users", "view_reports", "edit_lab"]
+
+    active_membership = next(
+        (m for m in user.memberships if m.lab_id == user.default_lab_id), 
+        None
+    )
+
+    user_dict = {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "mobile": user.mobile,
+        "default_lab": active_membership.lab.name,
+
+        "role": user_role,
+        "permissions": "user_permissions",
+        "theme_preference": "light"
+    }
 
     # 3. Issue the standard JWT session
     access_token = create_access_token(
@@ -289,7 +308,7 @@ def login_with_otp(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": user
+        "user": user_dict
     }
 
 

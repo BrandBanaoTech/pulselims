@@ -141,10 +141,11 @@ export function RegistrationWizard() {
       };
 
       const response = await authService.registerOwner(payload);
-      const defaultLabId = null;
-      setAuth(response.access_token, defaultLabId);
+      // const defaultLab = null;
+      // const userData = response.user;
+      // setAuth(response.access_token, defaultLab, userData);
       
-      router.push("/onboarding");
+      router.push("/login");
 
     } catch (error: any) {
       setGlobalError(parseApiError(error, "Verification failed. Please ensure your OTP is correct."));

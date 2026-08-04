@@ -120,7 +120,8 @@ def get_my_labs(
 # ==========================================
 @router.get("/{lab_id}", response_model=LabResponse, status_code=status.HTTP_200_OK)
 def get_lab_details(
-    lab_id: uuid.UUID,
+    # lab_id: uuid.UUID,
+    lab_id: str,
     db: Session = Depends(get_db),
     # Layer 1 Security (The Bouncer): Pre-checks RBAC permissions
     token_payload: TokenPayload = Depends(require_lab_permission("read_lab_settings"))
@@ -134,13 +135,24 @@ def get_lab_details(
     # Layer 2 Security (Defense in Depth): 
     # Hard-link the Lab to the User's Membership in the SQL query.
     # This prevents IDOR attacks if the dependency above ever fails.
+    # stmt = (
+    #     select(Lab)
+    #     .join(LabMembership, Lab.id == LabMembership.lab_id)
+    #     .where(
+    #         Lab.id == lab_id,
+    #         LabMembership.user_id == user_uuid, # Must be a current staff member/owner
+    #         Lab.is_active == True
+    #     )
+    # )
     stmt = (
         select(Lab)
-        .join(LabMembership, Lab.id == LabMembership.lab_id)
+        .join(User, User.default_lab_id == Lab.id)
+        .join(LabMembership, (LabMembership.lab_id == Lab.id) & (LabMembership.user_id == user_uuid))
         .where(
-            Lab.id == lab_id,
-            LabMembership.user_id == user_uuid, # Must be a current staff member/owner
-            Lab.is_active == True
+            User.id == user_uuid,
+            LabMembership.status == "ACTIVE",
+            Lab.is_active == True,
+            Lab.name == lab_id
         )
     )
     
@@ -161,7 +173,8 @@ def get_lab_details(
 # ==========================================
 @router.patch("/{lab_id}", response_model=LabResponse, status_code=status.HTTP_200_OK)
 def update_lab(
-    lab_id: uuid.UUID,
+    # lab_id: uuid.UUID,
+    lab_id: str,
     lab_update: LabUpdate,
     db: Session = Depends(get_db),
     # Layer 1 Security: Pre-checks RBAC permissions
@@ -176,13 +189,25 @@ def update_lab(
 
     # Layer 2 Security (Defense in Depth): 
     # Ensure the user is actually authorized for THIS specific lab at the database level.
+    # stmt = (
+    #     select(Lab)
+    #     .join(LabMembership, Lab.id == LabMembership.lab_id)
+    #     .where(
+    #         Lab.id == lab_id,
+    #         LabMembership.user_id == user_uuid, # Must be a current staff member/owner
+    #         Lab.is_active == True
+    #     )
+    # )
+
     stmt = (
         select(Lab)
-        .join(LabMembership, Lab.id == LabMembership.lab_id)
+        .join(User, User.default_lab_id == Lab.id)
+        .join(LabMembership, (LabMembership.lab_id == Lab.id) & (LabMembership.user_id == user_uuid))
         .where(
-            Lab.id == lab_id,
-            LabMembership.user_id == user_uuid, # Must be a current staff member/owner
-            Lab.is_active == True
+            User.id == user_uuid,
+            LabMembership.status == "ACTIVE",
+            Lab.is_active == True,
+            Lab.name == lab_id
         )
     )
     lab = db.execute(stmt).scalars().first()

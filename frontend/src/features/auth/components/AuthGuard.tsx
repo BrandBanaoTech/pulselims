@@ -15,9 +15,9 @@ export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps)
   const router = useRouter();
   const pathname = usePathname();
   
-  const { token, activeLabId, _hasHydrated, logout } = useAuthStore();
+  const { token, activeLab, _hasHydrated, logout } = useAuthStore();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  console.log( 'lab -> ' + activeLabId)
+  // console.log( 'lab -> ' + activeLabId)
   const isCheckingRef = useRef(false);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps)
 
         // C. Multi-Tenant Routing Engine
         // IF activeLabId IS NULL (New user or user without access)
-        if (!activeLabId) {
+        if (!activeLab) {
           if (requireActiveLab) {
             router.replace("/onboarding");
             return;
@@ -65,7 +65,7 @@ export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps)
     };
 
     executeSecurityCheck();
-  }, [token, activeLabId, _hasHydrated, router, pathname, logout, requireActiveLab]);
+  }, [token, activeLab, _hasHydrated, router, pathname, logout, requireActiveLab]);
 
   if (!isAuthorized || !_hasHydrated) {
     return (

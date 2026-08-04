@@ -70,7 +70,10 @@ def get_current_user(
     Takes the mathematically valid JWT, extracts the subject (UUID), 
     and physically verifies the user still exists in the database.
     """
-    user_uuid = uuid.UUID(token_payload.sub)
+    try:
+        user_uuid = uuid.UUID(token_payload.sub)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid token subject format.")
     
     # ⚡ FAST QUERY: Primary Key lookup (< 1ms)
     user = db.execute(select(User).where(
@@ -82,7 +85,7 @@ def get_current_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="The user no longer exists."
+            detail="The user no longer exists or has been deactivated."
         )
     return user
 
@@ -112,7 +115,8 @@ def require_lab_permission(required_permission: str) -> Callable:
     """
     def permission_checker(
         # FastAPI natively extracts and validates the UUID from the URL path!
-        lab_id: uuid.UUID = Path(..., description="The UUID of the laboratory"),
+        # lab_id: uuid.UUID = Path(..., description="The UUID of the laboratory"),
+        # lab_id: str = Path(..., description="The UUID of the laboratory"),
         db: Session = Depends(get_db),
         token_payload: TokenPayload = Depends(get_current_token_payload)
     ) -> TokenPayload:
@@ -120,10 +124,15 @@ def require_lab_permission(required_permission: str) -> Callable:
         user_uuid = uuid.UUID(token_payload.sub)
 
         # ⚡ FAST QUERY: Look up the exact membership record in PostgreSQL
-        stmt = select(LabMembership).where(
+        stmt = (select(LabMembership)
+        .join(User, User.default_lab_id == LabMembership.lab_id)
+        .where(
+            User.id == user_uuid,
+            User.is_active == True,
+            User.is_verified == True,
             LabMembership.user_id == user_uuid,
-            LabMembership.lab_id == lab_id
-        )
+            LabMembership.status == "ACTIVE",
+        ))
         membership = db.execute(stmt).scalars().first()
 
         # 🛡️ SECURITY CHECKS (Zero-Trust Architecture)

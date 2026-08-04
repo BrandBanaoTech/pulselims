@@ -1,13 +1,26 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  full_name: string;
+  mobile: string;
+  default_lab: string;
+  
+  role: string;
+  permissions: string;
+  theme_preference: string;
+}
+
 interface AuthState {
   token: string | null;
-  activeLabId: string | null;
+  activeLab: string | null;
+  user: AuthUser | null;
   _hasHydrated: boolean; // Tracks if localStorage has been read
   
-  setAuth: (token: string, activeLabId: string | null) => void;
-  setActiveLabId: (labId: string) => void;
+  setAuth: (token: string, activeLab: string | null, user: AuthUser) => void;
+  setActiveLab: (labId: string) => void;
   setHasHydrated: (state: boolean) => void; 
   logout: () => void;
 }
@@ -16,15 +29,16 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
-      activeLabId: null,
+      activeLab: null,
+      user: null,
       _hasHydrated: false,
       
       // NEW: Batch update for token and lab status
-      setAuth: (token, activeLabId) => set({ token, activeLabId }),
-      setActiveLabId: (activeLabId) => set({ activeLabId }),
+      setAuth: (token, activeLab, user) => set({ token, activeLab, user }),
+      setActiveLab: (activeLab) => set({ activeLab }),
       setHasHydrated: (state) => set({ _hasHydrated: state }),
       
-      logout: () => set({ token: null, activeLabId: null }), 
+      logout: () => set({ token: null, activeLab: null, user: null }), 
     }),
     {
       name: 'lims-auth-storage',
