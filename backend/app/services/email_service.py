@@ -34,9 +34,9 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
     """
     Asynchronously dispatches the OTP email via Google Serverless Webhook.
     """
-    if not GAS_WEBHOOK_URL or not GAS_API_TOKEN:
-        logger.error("Missing Google Webhook configuration in environment variables.")
-        return
+    # if not GAS_WEBHOOK_URL or not GAS_API_TOKEN:
+    #     logger.error("Missing Google Webhook configuration in environment variables.")
+    #     return
 
     # 🎨 MARKET-READY TEMPLATE: Clean, responsive, high-contrast OTP email
     html_content = f"""
