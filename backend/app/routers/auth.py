@@ -291,7 +291,7 @@ def login_with_otp(
         "email": user.email,
         "full_name": user.full_name,
         "mobile": user.mobile,
-        "default_lab": active_membership.lab.name,
+        "default_lab": active_membership.lab.name if active_membership else "",
 
         "role": user_role,
         "permissions": "user_permissions",

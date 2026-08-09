@@ -7,7 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from .core.rate_limit import limiter
 
-from app.routers import auth, lab, membership, user
+from app.routers import auth, lab, membership, user, testdictionary, adminui
 from .core.config import settings
 
 
@@ -52,8 +52,10 @@ async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
 # ==========================================
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}", tags=["Authentication"])
 app.include_router(lab.router, prefix=f"{settings.API_V1_STR}", tags=["Laboratories"])
+app.include_router(testdictionary.router, prefix=f"{settings.API_V1_STR}", tags=["Test Dictionary"])
 # app.include_router(membership.router, prefix=f"{settings.API_V1_STR}", tags=["Staff Management"])
 app.include_router(user.router,  prefix=f"{settings.API_V1_STR}", tags=["Users"])
+app.include_router(adminui.router, tags=["Admin UI"])
 
 # ==========================================
 # 4. HEALTH CHECK (For Load Balancers/Cloud)

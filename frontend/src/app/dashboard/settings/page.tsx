@@ -118,7 +118,8 @@ export default function SettingsPage() {
   // MAIN UI
   // ==========================================
   return (
-    <div className="max-w-5xl mx-auto flex flex-col min-h-screen animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
+    // <div className="max-w-5xl mx-auto flex flex-col min-h-screen animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
+    <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans pb-24 relative">
       
       {/* 1. EDITORIAL HEADER */}
       <div className="flex items-start gap-5 mb-8">

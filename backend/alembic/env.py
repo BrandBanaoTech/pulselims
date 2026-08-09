@@ -10,9 +10,9 @@ from alembic import context
 from app.core.database import Base
 from app.core.config import settings
 from app.models.user import User
-from app.models.lab import Lab
+from app.models.lab import Lab, LabTest
 from app.models.labmembership import LabMembership
-
+from app.models.testdictionary import MasterCatalogTest, DepartmentEnum, SampleTypeEnum
 
 # 1. ADD YOUR PROJECT ROOT TO PATH
 sys.path.append(os.getcwd())
