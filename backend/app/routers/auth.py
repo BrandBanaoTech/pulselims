@@ -75,12 +75,12 @@ def request_registration_otps(
     # mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)
     email_otp, email_token = generate_stateless_otp(clean_email)
 
-    if existing_user:
+    if not existing_user:
         # THE SILENT CATCH: Do not send the OTPs. Send a security alert instead.
         # background_tasks.add_task(send_sms, clean_mobile, "Security Alert: Someone tried to register a Lab account with this number, but you are already registered. Please log in.")
         # background_tasks.add_task(send_security_alert, clean_email, "Security Alert: Registration attempted on an existing account. Please log in.")
-        background_tasks.add_task(send_security_alert, clean_email)
-    else:
+        # background_tasks.add_task(send_security_alert, clean_email)
+    # else:
         # Normal Flow
         # background_tasks.add_task(send_sms, clean_mobile, mobile_otp)
         background_tasks.add_task(send_registration_otp, clean_email, email_otp)
@@ -211,8 +211,8 @@ def request_login_otp(
     # 2. Process logic exactly the same to equalize CPU cycles
     if user and getattr(user, 'is_active', False):
         email_otp, email_token = generate_stateless_otp(user.email)
-        background_tasks.add_task(send_email, user.email, email_otp)
-        # background_tasks.add_task(send_registration_otp, user.email, email_otp)
+        # background_tasks.add_task(send_email, user.email, email_otp)
+        background_tasks.add_task(send_registration_otp, user.email, email_otp)
         # mobile_otp, mobile_token = generate_stateless_otp(clean_mobile)  # 2. Generate Cryptographic State
         # background_tasks.add_task(send_sms, clean_mobile, mobile_otp) # 3. Dispatch Non-Blocking SMS
     
