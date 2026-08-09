@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIMS Super Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS for the Toggle Switches */
+        .toggle-checkbox:checked { right: 0; border-color: #4F46E5; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #4F46E5; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #e2e8f0; transition: all 0.3s; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #cbd5e1; border-radius: 9999px; transition: all 0.3s; }
+        .toggle-circle { width: 1.25rem; height: 1.25rem; background-color: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: all 0.3s; margin-top: 0.125rem; margin-left: 0.125rem; }
+        .toggle-checkbox:checked + .toggle-label .toggle-circle { transform: translateX(1.5rem); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen">
+
+    <!-- Top Navigation -->
+    <nav class="bg-indigo-600 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center font-bold text-xl tracking-wide">
+                    🧬 LIMS Enterprise Console
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-indigo-200">{{ admin_email }}</span>
+                    <a href="/admin/logout" class="bg-indigo-800 hover:bg-indigo-900 px-4 py-2 rounded text-sm font-medium transition">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sub Navigation Tabs -->
+    <div class="bg-white border-b shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-8">
+            <a href="?tab=overview" class="py-4 font-medium text-sm border-b-2 {% if current_tab == 'overview' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">Overview</a>
+            <a href="?tab=users" class="py-4 font-medium text-sm border-b-2 {% if current_tab == 'users' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">Manage Users</a>
+            <a href="?tab=labs" class="py-4 font-medium text-sm border-b-2 {% if current_tab == 'labs' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">Manage Labs</a>
+            <a href="?tab=tests" class="py-4 font-medium text-sm border-b-2 {% if current_tab == 'tests' %}border-indigo-600 text-indigo-600{% else %}border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300{% endif %}">Master Catalog</a>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- ERROR TOAST NOTIFICATION (Hidden by default) -->
+        <div id="toast" class="fixed bottom-5 right-5 bg-red-600 text-white px-6 py-3 rounded shadow-lg hidden transition-opacity"></div>
+
+        <!-- ================= OVERVIEW TAB ================= -->
+        {% if current_tab == 'overview' %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-indigo-500">
+                <h3 class="text-gray-500 text-sm font-medium uppercase">Total Labs</h3>
+                <p class="mt-2 text-4xl font-extrabold text-gray-900">{{ metrics.total_labs }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-green-500">
+                <h3 class="text-gray-500 text-sm font-medium uppercase">Active Labs</h3>
+                <p class="mt-2 text-4xl font-extrabold text-green-600">{{ metrics.active_labs }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-blue-500">
+                <h3 class="text-gray-500 text-sm font-medium uppercase">Total Users</h3>
+                <p class="mt-2 text-4xl font-extrabold text-gray-900">{{ metrics.total_users }}</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6 border-t-4 border-purple-500">
+                <h3 class="text-gray-500 text-sm font-medium uppercase">Master Tests</h3>
+                <p class="mt-2 text-4xl font-extrabold text-gray-900">{{ metrics.total_master_tests }}</p>
+            </div>
+        </div>
+
+        <!-- ================= USERS TAB ================= -->
+        {% elif current_tab == 'users' %}
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User Identity</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Joined</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Active</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Platform Admin</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for user in users %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ user.email }}</div>
+                            <div class="text-sm text-gray-500">{{ user.mobile }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <!-- Toggle Account Active -->
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" onchange="toggleApi(this, '/admin/api/users/{{ user.id }}/toggle-active')" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" {% if user.is_active %}checked{% endif %}/>
+                                <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"><div class="toggle-circle"></div></label>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <!-- Toggle Super Admin -->
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" onchange="toggleApi(this, '/admin/api/users/{{ user.id }}/toggle-admin')" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" {% if user.is_superadmin %}checked{% endif %}/>
+                                <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"><div class="toggle-circle"></div></label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ================= LABS TAB ================= -->
+        {% elif current_tab == 'labs' %}
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lab Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Active Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for lab in labs %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ lab.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ lab.contact_phone }}</div>
+                            <div class="text-sm text-gray-500">{{ lab.support_email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ lab.license_number or 'N/A' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" onchange="toggleApi(this, '/admin/api/labs/{{ lab.id }}/toggle-active')" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" {% if lab.is_active %}checked{% endif %}/>
+                                <label class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"><div class="toggle-circle"></div></label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ================= MASTER CATALOG TAB ================= -->
+        {% elif current_tab == 'tests' %}
+        
+        <!-- Tab Header with Action Buttons -->
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">Global Test Dictionary</h2>
+            
+            <div class="flex space-x-3">
+                
+                <!-- 🚀 NEW: BULK DELETE BUTTON (Hidden by default) -->
+                <button id="bulkDeleteBtn" onclick="executeBulkDelete()" class="hidden bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    Delete Selected (<span id="selectedCount">0</span>)
+                </button>
+
+                <input type="file" id="jsonFileInput" accept=".json" class="hidden" onchange="handleFileUpload(event)">
+                
+                <button onclick="document.getElementById('jsonFileInput').click()" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded shadow-sm text-sm font-medium transition flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Upload JSON
+                </button>
+
+                <button onclick="toggleModal('testModal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition flex items-center">
+                    + Add Master Test
+                </button>
+            </div>
+        </div>
+
+        <!-- The Tests Table with Checkboxes & Full Actions -->
+        <div class="bg-white shadow rounded-lg overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <!-- 🚀 NEW: SELECT ALL CHECKBOX -->
+                        <th class="px-6 py-3 text-left">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleAllCheckboxes(this)" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer">
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Test Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">LOINC Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Default Price</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for test in tests %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <!-- 🚀 NEW: INDIVIDUAL ROW CHECKBOX -->
+                        <td class="px-6 py-4">
+                            <input type="checkbox" value="{{ test.id }}" onchange="updateBulkDeleteBtn()" class="test-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer">
+                        </td>
+                        <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ test.official_name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ test.loinc_code or 'Pending' }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{{ test.department.value if test.department else test.department }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{{ test.default_price }}</td>
+                        
+                        <!-- ACTIONS COLUMN -->
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button 
+                                class="text-indigo-600 hover:text-indigo-900 mr-3 font-semibold"
+                                data-id="{{ test.id }}"
+                                data-name="{{ test.official_name }}"
+                                data-loinc="{{ test.loinc_code or '' }}"
+                                data-dept="{{ test.department.value if test.department else test.department }}"
+                                data-sample="{{ test.sample_type.value if test.sample_type else test.sample_type }}"
+                                data-price="{{ test.default_price }}"
+                                data-tat="{{ test.default_tat }}"
+                                data-guidelines="{{ test.clinical_guidelines or '' }}"
+                                onclick="openEditModalFromBtn(this)">
+                                Edit
+                            </button>
+                            <button 
+                                onclick="deleteTest('{{ test.id }}', '{{ test.official_name }}')" 
+                                class="text-red-600 hover:text-red-900 font-semibold">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- CREATE TEST MODAL -->
+        <div id="testModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Add Master Catalog Test</h3>
+                    <button onclick="toggleModal('testModal')" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                </div>
+                
+                <form id="createTestForm" onsubmit="submitNewTest(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Official Test Name *</label>
+                            <input type="text" id="official_name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">LOINC Code</label>
+                            <input type="text" id="loinc_code" placeholder="e.g., 58410-2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Default Price (₹) *</label>
+                            <input type="number" id="default_price" step="0.01" min="0" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Department *</label>
+                            <select id="department" required class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sample Type *</label>
+                            <select id="sample_type" required class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                {% for sample in sample_types %}
+                                <option value="{{ sample }}">{{ sample }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Default Turnaround Time (TAT) *</label>
+                            <input type="text" id="default_tat" value="24 Hrs" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Clinical Guidelines</label>
+                            <textarea id="clinical_guidelines" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" onclick="toggleModal('testModal')" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                        <button type="submit" id="submitTestBtn" class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700">Save Test</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 🚀 EDIT TEST MODAL -->
+        <div id="editTestModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+            <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Edit Master Catalog Test</h3>
+                    <button onclick="toggleModal('editTestModal')" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
+                </div>
+                
+                <form id="editTestForm" onsubmit="submitEditTest(event)">
+                    <input type="hidden" id="edit_test_id">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Official Test Name *</label>
+                            <input type="text" id="edit_official_name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">LOINC Code</label>
+                            <input type="text" id="edit_loinc_code" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Default Price (₹) *</label>
+                            <input type="number" id="edit_default_price" step="0.01" min="0" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Department *</label>
+                            <select id="edit_department" required class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                {% for dept in departments %}
+                                <option value="{{ dept }}">{{ dept }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sample Type *</label>
+                            <select id="edit_sample_type" required class="mt-1 block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                {% for sample in sample_types %}
+                                <option value="{{ sample }}">{{ sample }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Default Turnaround Time (TAT) *</label>
+                            <input type="text" id="edit_default_tat" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Clinical Guidelines</label>
+                            <textarea id="edit_clinical_guidelines" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" onclick="toggleModal('editTestModal')" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                        <button type="submit" id="updateTestBtn" class="bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700">Update Test</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+    </main>
+
+    <!-- AJAX LOGIC FOR INSTANT TOGGLES -->
+    <script>
+        async function toggleApi(checkboxElement, url) {
+            // Disable the checkbox temporarily while the request happens
+            checkboxElement.disabled = true;
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' } // Using cookie for auth implicitly
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    // Revert the toggle visually if it failed on the backend
+                    checkboxElement.checked = !checkboxElement.checked;
+                    showToast(data.error || "An error occurred");
+                }
+            } catch (err) {
+                checkboxElement.checked = !checkboxElement.checked;
+                showToast("Network Error: Could not connect to server");
+            } finally {
+                // Re-enable the checkbox
+                checkboxElement.disabled = false;
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.classList.remove("hidden");
+            setTimeout(() => { toast.classList.add("hidden"); }, 3000);
+        }
+    </script>
+    <!-- AJAX LOGIC FOR INSTANT ACTIONS -->
+    <script>
+        // Your existing toggleApi function remains here
+        async function toggleApi(checkboxElement, url) {
+            checkboxElement.disabled = true;
+            try {
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                const data = await response.json();
+                if (!response.ok) {
+                    checkboxElement.checked = !checkboxElement.checked;
+                    showToast(data.error || "An error occurred");
+                }
+            } catch (err) {
+                checkboxElement.checked = !checkboxElement.checked;
+                showToast("Network Error: Could not connect to server");
+            } finally {
+                checkboxElement.disabled = false;
+            }
+        }
+
+        // --- NEW MODAL & CREATION LOGIC ---
+        function toggleModal(modalID) {
+            const modal = document.getElementById(modalID);
+            modal.classList.toggle('hidden');
+        }
+
+        async function submitNewTest(event) {
+            event.preventDefault(); // Stop the form from causing a full page reload
+            
+            const btn = document.getElementById("submitTestBtn");
+            const originalText = btn.innerText;
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            // Collect Data
+            const payload = {
+                official_name: document.getElementById('official_name').value,
+                loinc_code: document.getElementById('loinc_code').value || null,
+                department: document.getElementById('department').value,
+                sample_type: document.getElementById('sample_type').value,
+                default_price: parseFloat(document.getElementById('default_price').value),
+                default_tat: document.getElementById('default_tat').value,
+                clinical_guidelines: document.getElementById('clinical_guidelines').value || null
+            };
+
+            try {
+                const response = await fetch('/admin/api/tests/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Success! Reload the page to show the newly added test in the table
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed to create test");
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                showToast("Network Error: Could not connect to server");
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Reset the input so the user can upload the same file again if needed
+            event.target.value = '';
+
+            // Construct multipart/form-data for the file upload
+            const formData = new FormData();
+            formData.append("file", file);
+
+            showToast("Uploading and validating data...");
+
+            try {
+                const response = await fetch('/admin/api/tests/upload', {
+                    method: 'POST',
+                    body: formData // Note: Do NOT set Content-Type header; fetch handles boundaries automatically
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Upload Complete!\n✅ Added: ${data.added}\n⏭️ Skipped (Duplicates): ${data.skipped}`);
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed to upload tests");
+                }
+            } catch (err) {
+                showToast("Network Error: Could not upload file");
+            }
+        }
+
+        // --- 1. OPEN EDIT MODAL & FILL DATA ---
+        function openEditModalFromBtn(buttonElement) {
+            document.getElementById('edit_test_id').value = buttonElement.dataset.id;
+            document.getElementById('edit_official_name').value = buttonElement.dataset.name;
+            document.getElementById('edit_loinc_code').value = buttonElement.dataset.loinc;
+            document.getElementById('edit_department').value = buttonElement.dataset.dept;
+            document.getElementById('edit_sample_type').value = buttonElement.dataset.sample;
+            document.getElementById('edit_default_price').value = buttonElement.dataset.price;
+            document.getElementById('edit_default_tat').value = buttonElement.dataset.tat;
+            document.getElementById('edit_clinical_guidelines').value = buttonElement.dataset.guidelines;
+
+            toggleModal('editTestModal');
+        }
+
+        // --- 2. SUBMIT EDIT FORM ---
+        async function submitEditTest(event) {
+            event.preventDefault();
+            const testId = document.getElementById('edit_test_id').value;
+            const btn = document.getElementById("updateTestBtn");
+            btn.innerText = "Updating...";
+            btn.disabled = true;
+
+            const payload = {
+                official_name: document.getElementById('edit_official_name').value,
+                loinc_code: document.getElementById('edit_loinc_code').value || null,
+                department: document.getElementById('edit_department').value,
+                sample_type: document.getElementById('edit_sample_type').value,
+                default_price: parseFloat(document.getElementById('edit_default_price').value),
+                default_tat: document.getElementById('edit_default_tat').value,
+                clinical_guidelines: document.getElementById('edit_clinical_guidelines').value || null
+            };
+
+            try {
+                const response = await fetch(`/admin/api/tests/${testId}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed to update test");
+                    btn.innerText = "Update Test";
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                showToast("Network Error: Could not connect to server");
+                btn.innerText = "Update Test";
+                btn.disabled = false;
+            }
+        }
+
+        // --- 3. DELETE TEST ---
+        async function deleteTest(testId, testName) {
+            if (!confirm(`Are you sure you want to permanently delete '${testName}' from the Master Catalog?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/admin/api/tests/${testId}/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed to delete test");
+                }
+            } catch (err) {
+                showToast("Network Error: Could not delete test");
+            }
+        }
+
+        // ==========================================
+        // BULK DELETE LOGIC
+        // ==========================================
+        
+        function toggleAllCheckboxes(source) {
+            const checkboxes = document.querySelectorAll('.test-checkbox');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+            updateBulkDeleteBtn();
+        }
+
+        function updateBulkDeleteBtn() {
+            const selectedCount = document.querySelectorAll('.test-checkbox:checked').length;
+            const btn = document.getElementById('bulkDeleteBtn');
+            const countSpan = document.getElementById('selectedCount');
+            
+            // Toggle visibility of the Bulk Delete Button using Tailwind classes
+            if (selectedCount > 0) {
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
+                countSpan.innerText = selectedCount;
+            } else {
+                btn.classList.add('hidden');
+                btn.classList.remove('flex');
+            }
+        }
+
+        async function executeBulkDelete() {
+            const checkboxes = document.querySelectorAll('.test-checkbox:checked');
+            const testIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            if (testIds.length === 0) return;
+            
+            // Confirm with the user, highlighting the database safety features
+            const confirmMsg = `Are you sure you want to permanently delete ${testIds.length} selected tests?\n\n(Note: Tests actively used by tenant labs will be safely skipped to protect their data.)`;
+            if (!confirm(confirmMsg)) return;
+
+            const btn = document.getElementById('bulkDeleteBtn');
+            btn.disabled = true;
+            btn.innerHTML = 'Deleting...';
+
+            try {
+                const response = await fetch('/admin/api/tests/bulk-delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test_ids: testIds })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`Bulk Delete Complete!\n✅ Successfully Deleted: ${data.deleted}\n⚠️ Skipped (In Use by Labs): ${data.failed}`);
+                    window.location.reload();
+                } else {
+                    showToast(data.error || "Failed to execute bulk delete.");
+                    window.location.reload();
+                }
+            } catch (err) {
+                showToast("Network Error: Could not connect to server");
+                window.location.reload();
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.classList.remove("hidden");
+            setTimeout(() => { toast.classList.add("hidden"); }, 3000);
+        }
+    </script>
+</body>
+</html>

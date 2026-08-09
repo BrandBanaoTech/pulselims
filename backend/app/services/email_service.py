@@ -99,8 +99,8 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                GAS_WEBHOOK_URL, 
-                json=payload, 
+                f"https://{GAS_WEBHOOK_URL}",
+                json=payload,
                 timeout=15.0,
                 follow_redirects=True 
             )
@@ -190,8 +190,8 @@ async def send_security_alert(target_email: EmailStr):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                GAS_WEBHOOK_URL, 
-                json=payload, 
+                f"https://{GAS_WEBHOOK_URL}",
+                json=payload,
                 timeout=15.0,
                 follow_redirects=True
             )

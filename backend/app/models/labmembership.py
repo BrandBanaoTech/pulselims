@@ -1,7 +1,7 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint, Index, JSON, Enum as SQLEnum
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint, Index, JSON, Enum as SQLEnum, Uuid
+# from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -23,17 +23,17 @@ class MembershipStatus(str, enum.Enum):
 class LabMembership(Base):
     __tablename__ = "lab_memberships"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     
     # Foreign Keys with CASCADE: If a user or lab is deleted, clean up their memberships automatically
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    lab_id = Column(UUID(as_uuid=True), ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    lab_id = Column(Uuid(as_uuid=True), ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
     
     # ⚡ PostgreSQL JSONB: Optimized for fast querying of permission arrays
-    permissions = Column(JSON, nullable=False, server_default='["read_only"]')
+    permissions = Column(JSON, nullable=False, default=["read_only"], server_default='["read_only"]')
     
     # 🔒 Strict Database-Level State Machine
-    status = Column(SQLEnum(MembershipStatus), nullable=False, default=MembershipStatus.PENDING)
+    status = Column(SQLEnum(MembershipStatus, native_enum=False), nullable=False, default=MembershipStatus.PENDING)
     
     # 🛡️ 2-Step OTP Verification Fields (Encrypted/Hashed)
     otp_hash = Column(String(255), nullable=True, doc="Hashed OTP for verifying staff invitations.")
