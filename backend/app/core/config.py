@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     MAIL_FROM: str =config.get('MAIL_FROM')
     MAIL_PORT: str =config.get('MAIL_PORT')
     MAIL_SERVER: str =config.get('MAIL_SERVER')
+    GOOGLE_MAIL_WEBHOOK: str = config.get('GOOGLE_MAIL_WEBHOOK')
+    GOOGLE_MAIL_TOKEN: str = config.get('GOOGLE_MAIL_TOKEN')
 
     model_config = SettingsConfigDict(env_file=".env", case_sensitive = True, extra="ignore")
 

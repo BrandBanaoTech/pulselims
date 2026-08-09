@@ -1,17 +1,12 @@
-import os
 import httpx
 import logging
-from dotenv import dotenv_values
 from pydantic import EmailStr
 
-config = dotenv_values(".env")
+from ..core.config import settings
 
-# 🛡️ COMPLIANCE: Secure audit logger
+# # 🛡️ COMPLIANCE: Secure audit logger
 logger = logging.getLogger(__name__)
 
-# Standard 12-Factor App environment variable loading
-GAS_WEBHOOK_URL = config.get("GOOGLE_MAIL_WEBHOOK")
-GAS_API_TOKEN = config.get("GOOGLE_MAIL_TOKEN")
 
 # ==========================================
 # HELPER: COMPLIANT DATA MASKING
@@ -88,7 +83,7 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
     """
 
     payload = {
-        "api_token": GAS_API_TOKEN,
+        "api_token": settings.GOOGLE_MAIL_TOKEN,
         "to": target_email,
         "subject": f"{otp_code} is your PulseLIMS verification code",
         "html_content": html_content
@@ -99,7 +94,7 @@ async def send_registration_otp(target_email: EmailStr, otp_code: str):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://{GAS_WEBHOOK_URL}",
+                settings.GOOGLE_MAIL_WEBHOOK,
                 json=payload,
                 timeout=15.0,
                 follow_redirects=True 
@@ -128,7 +123,7 @@ async def send_security_alert(target_email: EmailStr):
     """
     Sends a security alert via Google Serverless Webhook.
     """
-    if not GAS_WEBHOOK_URL or not GAS_API_TOKEN:
+    if not settings.GOOGLE_MAIL_WEBHOOK or not settings.GOOGLE_MAIL_TOKEN:
         return
 
     # 🎨 MARKET-READY TEMPLATE: Urgent, red-themed security notice
@@ -179,7 +174,7 @@ async def send_security_alert(target_email: EmailStr):
     """
     
     payload = {
-        "api_token": GAS_API_TOKEN,
+        "api_token": settings.GOOGLE_MAIL_TOKEN,
         "to": target_email,
         "subject": "Security Alert: Registration Attempted",
         "html_content": html_content
@@ -190,7 +185,7 @@ async def send_security_alert(target_email: EmailStr):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"https://{GAS_WEBHOOK_URL}",
+                settings.GOOGLE_MAIL_WEBHOOK,
                 json=payload,
                 timeout=15.0,
                 follow_redirects=True
