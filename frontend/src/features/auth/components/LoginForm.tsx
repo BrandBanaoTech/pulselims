@@ -14,6 +14,7 @@ import {
 import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "../api/auth.service";
 import { combinedLoginSchema, LoginWizardValues } from "../schemas/login.schema";
+import { toast } from "@/lib/toast";
 
 // Market-ready, scalable country codes array
 const countryCodes = [
@@ -106,7 +107,8 @@ export function LoginForm() {
       setVerificationToken(response.mobile_verification_token);
       setCurrentStep(2);
     } catch (error: any) {
-      setAuthError(parseApiError(error, "Could not verify your credentials."));
+      // setAuthError(parseApiError(error, "Could not verify your credentials."));
+      setAuthError("Could not verify your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -142,6 +144,7 @@ export function LoginForm() {
         router.push("/dashboard");
       }
       else if (!defaultLab && token) {
+        toast.success("Please Register Your Lab.");
         router.push('/onboarding')
       } 
       else {

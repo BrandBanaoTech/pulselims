@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "../api/auth.service";
 import { registerFormSchema, RegisterFormValues } from "../schemas/register.schema";
 import { Loader2, AlertTriangle, ArrowRight, ArrowLeft, ShieldCheck, Mail, Eye, EyeOff } from "lucide-react"; 
+import { toast } from "@/lib/toast";
 
 // Market-ready, scalable country codes array
 const countryCodes = [
@@ -151,6 +152,7 @@ export function RegistrationWizard() {
       setGlobalError(parseApiError(error, "Verification failed. Please ensure your OTP is correct."));
     } finally {
       setIsLoading(false);
+      toast.success("Registration Sucessfull! Please Login.");
       isRequestingRef.current = false;
     }
   };
