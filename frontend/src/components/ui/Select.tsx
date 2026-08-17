@@ -2,10 +2,15 @@ import React, { forwardRef } from "react";
 import { ChevronDown } from "lucide-react";
 import { Label } from "./Label";
 
+export interface SelectOption {
+  label: string;
+  value: string | number;
+}
+
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
+  options: SelectOption[];
   error?: string;
-  options: { label: string; value: string | number }[];
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
@@ -16,10 +21,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <div className="relative">
           <select
             ref={ref}
-            className={`w-full py-3 pl-4 pr-10 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none appearance-none cursor-pointer transition-all shadow-sm focus:bg-white focus:ring-4 ${
-              error 
-                ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10" 
-                : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"
+            className={`w-full py-3 pl-4 pr-10 bg-slate-50 border rounded-xl text-sm font-bold text-slate-900 outline-none appearance-none cursor-pointer transition-all shadow-sm focus:bg-white focus:ring-4 disabled:opacity-50 disabled:cursor-not-allowed ${
+              error ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/10" : "border-slate-200 focus:border-teal-500 focus:ring-teal-500/10"
             } ${className}`}
             {...props}
           >
