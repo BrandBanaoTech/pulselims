@@ -1,10 +1,11 @@
+// src/features/auth/components/AuthGuard.tsx
+
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { HeartPulse } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { authService } from "@/features/auth/api/auth.service";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -15,59 +16,42 @@ export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps)
   const router = useRouter();
   const pathname = usePathname();
   
-  const { token, activeLab, _hasHydrated, logout } = useAuthStore();
+  const { token, activeLab, _hasHydrated } = useAuthStore();
   const [isAuthorized, setIsAuthorized] = useState(false);
-  // console.log( 'lab -> ' + activeLabId)
-  const isCheckingRef = useRef(false);
 
   useEffect(() => {
-    // 1. Wait for Store Hydration
+    // 1. Wait for LocalStorage to finish hydrating
     if (!_hasHydrated) return;
-    if (isCheckingRef.current) return;
 
-    const executeSecurityCheck = async () => {
-      isCheckingRef.current = true;
-
-      try {
-        // A. If no token, bounce to login
-        if (!token) {
-          throw new Error("No token");
-        }
-
-        // B. Verify Session/Refresh Token
-        // This validates that the token is alive and session is active
-        await authService.verifySession();
-
-        // C. Multi-Tenant Routing Engine
-        // IF activeLabId IS NULL (New user or user without access)
-        if (!activeLab) {
-          if (requireActiveLab) {
-            router.replace("/onboarding");
-            return;
-          }
-        } 
-        // IF activeLabId EXISTS (Standard user)
-        else {
-          // If they try to hit /onboarding but already have a lab, kick them to dashboard
-          if (pathname === "/onboarding") {
-            router.replace("/dashboard");
-            return;
-          }
-        }
-
-        setIsAuthorized(true);
-      } catch (error) {
-        logout();
+    // 2. TOKEN CHECK: If no token exists, bounce to login
+    if (!token) {
+      if (pathname !== "/login") {
         router.replace("/login");
-      } finally {
-        isCheckingRef.current = false;
       }
-    };
+      return;
+    }
 
-    executeSecurityCheck();
-  }, [token, activeLab, _hasHydrated, router, pathname, logout, requireActiveLab]);
+    // 3. LAB CHECK: If route requires a lab, but none is selected, bounce to onboarding
+    if (requireActiveLab && !activeLab) {
+      if (pathname !== "/onboarding") {
+        router.replace("/onboarding");
+      }
+      return;
+    }
 
-  if (!isAuthorized || !_hasHydrated) {
+    // 4. ONBOARDING LOOP PREVENTION: If they have a lab and hit onboarding, send to dashboard
+    if (activeLab && pathname === "/onboarding" && !requireActiveLab) {
+      router.replace("/dashboard");
+      return;
+    }
+
+    // Passed memory validation!
+    setIsAuthorized(true);
+
+  }, [token, activeLab, _hasHydrated, pathname, router, requireActiveLab]);
+
+  // Fast loading state only during initial hydration
+  if (!_hasHydrated || (!isAuthorized && token)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
         <HeartPulse className="text-teal-600 animate-pulse" size={40} />
@@ -75,8 +59,117 @@ export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps)
     );
   }
 
+  if (!token) return null;
+
   return <>{children}</>;
 }
+
+// "use client";
+
+// import { useEffect, useState, useRef } from "react";
+// import { useRouter, usePathname } from "next/navigation";
+// import { HeartPulse } from "lucide-react";
+// import { useAuthStore } from "@/store/useAuthStore";
+// import { authService } from "@/features/auth/api/auth.service";
+
+// interface AuthGuardProps {
+//   children: React.ReactNode;
+//   requireActiveLab?: boolean;
+// }
+
+// export function AuthGuard({ children, requireActiveLab = true }: AuthGuardProps) {
+//   const router = useRouter();
+//   const pathname = usePathname();
+  
+//   const { token, activeLab, _hasHydrated, logout } = useAuthStore();
+//   const [isAuthorized, setIsAuthorized] = useState(false);
+//   // console.log( 'lab -> ' + activeLabId)
+//   const isCheckingRef = useRef(false);
+
+//   useEffect(() => {
+//     // 1. Wait for Store Hydration
+//     if (!_hasHydrated) return;
+    
+//     // 2.
+//     if (!token) {
+//       if (pathname !== "/login") {
+//         router.replace("/login");
+//       }
+//       return;
+//     }
+//     // 3. If lab is deleted (or missing) and the route requires it, kick to onboarding
+//    if (requireActiveLab && !activeLab) {
+//       if (pathname !== "/onboarding") {
+//         router.replace("/onboarding");
+//       }
+//       return;
+//     }
+
+//     // 4. ONBOARDING REDIRECT: If they try to go to onboarding but already have a lab
+//     if (activeLab && pathname === "/onboarding" && requireActiveLab === false) {
+//       router.replace("/dashboard");
+//       return;
+//     }
+
+//     if (isCheckingRef.current) return;
+
+//     const executeSecurityCheck = async () => {
+//       isCheckingRef.current = true;
+
+//       try {
+//         // A. If no token, bounce to login
+//         if (!token) {
+//           throw new Error("No token");
+//         }
+
+//         // B. Verify Session/Refresh Token
+//         // This validates that the token is alive and session is active
+//         await authService.verifySession();
+
+//         // C. Multi-Tenant Routing Engine
+//         // IF activeLabId IS NULL (New user or user without access)
+//         if (!activeLab) {
+//           if (requireActiveLab) {
+//             router.replace("/onboarding");
+//             return;
+//           }
+//         } 
+//         // IF activeLabId EXISTS (Standard user)
+//         else {
+//           // If they try to hit /onboarding but already have a lab, kick them to dashboard
+//           if (pathname === "/onboarding") {
+//             router.replace("/dashboard");
+//             return;
+//           }
+//         }
+
+//         setIsAuthorized(true);
+//       } catch (error) {
+//         logout();
+//         router.replace("/login");
+//       } finally {
+//         isCheckingRef.current = false;
+//       }
+//     };
+
+//     executeSecurityCheck();
+//   }, [token, activeLab, _hasHydrated, router, pathname, logout, requireActiveLab]);
+
+//   // Prevent rendering protected content while verifying or redirecting
+//   if (!_hasHydrated) return null; 
+//   if (!token) return null;
+//   if (requireActiveLab && !activeLab) return null;
+
+//   if (!isAuthorized || !_hasHydrated) {
+//     return (
+//       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
+//         <HeartPulse className="text-teal-600 animate-pulse" size={40} />
+//       </div>
+//     );
+//   }
+
+//   return <>{children}</>;
+// }
 
 // // "use client";
 

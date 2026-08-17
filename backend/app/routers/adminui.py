@@ -81,7 +81,7 @@ def process_login(
         subject=str(user.id), 
         email=user.email, 
         mobile=str(user.mobile),
-        is_superadmin=True # Ensure this matches whatever your `create_access_token` accepts
+        # is_superadmin=True # Ensure this matches whatever your `create_access_token` accepts
     )
     
     response = RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_303_SEE_OTHER)

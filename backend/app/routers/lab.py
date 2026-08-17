@@ -72,6 +72,8 @@ def create_lab(
     )
     
     db.add(membership)
+
+    current_user.default_lab_id = new_lab.id
     
     # 3. Commit both atomically
     try:
