@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Metadata } from "next";
 import { AuthGuard } from "@/features/auth/components/AuthGuard";
 import { DashboardShell } from "@/features/dashboard/components/DashboardShell";
+import { ToastProvider } from "@/features/toast/components/ToastProvider";
 
 export const metadata: Metadata = {
   title: "Clinical Workspace | PulseLIMS",
@@ -13,6 +14,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <AuthGuard requireActiveLab={true}>
       <DashboardShell>
         {children}
+        <ToastProvider />
       </DashboardShell>
     </AuthGuard>
   );
