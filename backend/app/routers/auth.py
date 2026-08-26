@@ -287,15 +287,16 @@ def login_with_otp(
     )
 
     user_dict = {
-        "id": user.id,
+        # "id": user.id,
         "email": user.email,
         "full_name": user.full_name,
         "mobile": user.mobile,
         "default_lab": active_membership.lab.name if active_membership else "",
 
         "role": user_role,
-        "permissions": "user_permissions",
-        "theme_preference": "light"
+        # "permissions": "user_permissions",
+        "theme_preference": "light",
+        "logo_url": active_membership.lab.logo_url if active_membership else ""
     }
 
     # 3. Issue the standard JWT session
@@ -373,6 +374,41 @@ def refresh_access_token(
             detail="User account is missing or deactivated."
         )
 
+    # 🏢 UX OPTIMIZATION: Self-Healing Workspace Routing
+    # If the user doesn't have a default lab set, auto-assign their first active membership
+    if not user.default_lab_id:
+        first_membership = db.execute(
+            select(LabMembership).where(
+                LabMembership.user_id == user.id,
+                LabMembership.status == "ACTIVE"
+            )
+        ).scalars().first()
+        if first_membership:
+            user.default_lab_id = first_membership.lab_id
+            db.commit()
+            db.refresh(user)
+
+    user_role = "Admin"
+    # user_permissions = ["manage_users", "view_reports", "edit_lab"]
+
+    active_membership = next(
+        (m for m in user.memberships if m.lab_id == user.default_lab_id), 
+        None
+    )
+
+    user_dict = {
+        # "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "mobile": user.mobile,
+        "default_lab": active_membership.lab.name if active_membership else "",
+
+        "role": user_role,
+        # "permissions": "user_permissions",
+        "theme_preference": "light",
+        "logo_url": active_membership.lab.logo_url if active_membership else ""
+    }
+
     new_access_token = create_access_token(
         subject=user.id,
         email=user.email,
@@ -382,7 +418,7 @@ def refresh_access_token(
     return {
         "access_token": new_access_token,
         "token_type": "bearer",
-        "user": user 
+        "user": user_dict
     }
 
 

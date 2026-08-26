@@ -14,7 +14,7 @@ export interface AuthUser {
   role: string;
   permissions: string[]; // Standardized array for O(1) / O(N) access control
   theme_preference?: 'light' | 'dark' | 'system' | string;
-  avatar_url?: string;
+  logo_url?: string;
 }
 
 interface AuthState {

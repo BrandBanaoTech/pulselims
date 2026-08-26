@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 // --- Types ---
-export type TemplateStyle = "classic" | "modern" | "minimal";
+export type TemplateStyle = "classic" | "modern" | "minimal" ;
 export type ReportStatus = "Draft" | "Approved";
 export type PaymentStatus = "unpaid" | "partial" | "paid" | "refunded";
 export type PaymentMethod = "cash" | "upi" | "card" | "bank_transfer" | "insurance" | "none";

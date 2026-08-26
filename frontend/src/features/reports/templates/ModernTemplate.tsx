@@ -4,10 +4,11 @@ import { useReportStore } from "@/store/useReportStore";
 import { ShieldCheck } from "lucide-react";
 
 export function ModernTemplate() {
-  const { activeLab } = useAuthStore();
+  const { activeLab, user } = useAuthStore();
   // Notice we now pull setMetric and setPathologistNote!
   const { patient, metrics, setMetric, pathologistNote, setPathologistNote, status, config } = useReportStore();
   const labName = activeLab || "Apex Diagnostics";
+  const lablogo = user?.logo_url || "https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true";
 
   const cbcParameters = [
     { id: "p1", name: "Hemoglobin (Hb)", unit: "g/dL", referenceText: "13.0 - 17.0", minRange: 13.0, maxRange: 17.0 },
@@ -22,7 +23,7 @@ export function ModernTemplate() {
       {config.showHeader && (
         <div className="px-12 pt-12 pb-8 flex items-start justify-between">
           <div className="flex items-center gap-5">
-            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true`} alt="Logo" className="w-20 h-20 rounded-2xl shadow-sm" />
+            {lablogo? <img src={lablogo} alt="Logo" className="w-25 h-25 rounded-2xl" /> : ""}
             <div>
               <h1 className="text-3xl font-black tracking-tight" style={{ color: config.themeColor }}>{labName}</h1>
               <p className="text-sm font-bold text-slate-500 mt-1">Center for Advanced Diagnostics</p>

@@ -352,9 +352,11 @@ export default function IntakesPage() {
       {/* 1. ENTERPRISE PAGE HEADER */}
       <PageHeader
         icon={Stethoscope}
-        eyebrow={`Active Operations • ${activeLab || "Workspace"}`}
-        title="Patient Intakes"
-        description="Register new patients, manage diagnostic queues, and track turnaround times across your laboratory."
+        eyebrow={`Intakes • ${activeLab || "Workspace"}`}
+        title=""
+        description=""
+        // title="Patient Intakes"
+        // description="Register new patients, manage diagnostic queues, and track turnaround times across your laboratory."
       />
 
       {/* 2. UNIFIED COMMAND BAR */}
@@ -371,7 +373,7 @@ export default function IntakesPage() {
         activeFilter={statusFilter}
         onFilterChange={(val) => setStatusFilter(val as any)}
         action={
-          <Button icon={<Plus size={16}/>} onClick={() => setIsDrawerOpen(true)}>
+          <Button variant="dark" icon={<Plus size={16} color="t"/>} onClick={() => setIsDrawerOpen(true)}>
              <span className="hidden sm:inline">New Intake</span>
           </Button>
         }

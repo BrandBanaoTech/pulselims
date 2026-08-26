@@ -4,10 +4,11 @@ import { useReportStore } from "@/store/useReportStore";
 import { ShieldCheck } from "lucide-react";
 
 export function ClassicTemplate() {
-  const { activeLab } = useAuthStore();
+  const { activeLab, user } = useAuthStore();
   const { patient, metrics, pathologistNote, status, config } = useReportStore();
   const labName = activeLab || "Apex Diagnostics";
-
+  const lablogo = user?.avatar_url || "https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true";
+  console.log(lablogo);
   // Mock catalog just for the visual layout mapping
   const cbcParameters = [
     { id: "p1", name: "Hemoglobin (Hb)", unit: "g/dL", referenceText: "13.0 - 17.0", minRange: 13.0, maxRange: 17.0 },
@@ -21,7 +22,7 @@ export function ClassicTemplate() {
       {config.showHeader && (
         <div className="px-12 pt-12 pb-8 flex items-start justify-between">
           <div className="flex items-center gap-5">
-            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true`} alt="Logo" className="w-20 h-20 rounded-2xl shadow-sm" />
+            <img src={lablogo} alt="Logo" className="w-20 h-20 rounded-2xl shadow-sm" />
             <div>
               <h1 className="text-3xl font-black tracking-tight" style={{ color: config.themeColor }}>{labName}</h1>
               <p className="text-sm font-bold text-slate-500 mt-1">Center for Advanced Diagnostics</p>
