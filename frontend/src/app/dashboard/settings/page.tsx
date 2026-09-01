@@ -6,19 +6,22 @@ import {
   Building2, Users, ShieldAlert, ChevronLeft, 
   Settings2, AlertCircle, Plus, Trash2, Mail, Lock,
   MapPin, Palette, FileSignature,
-  FlaskConical
+  FlaskConical,
+  FileText
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { labService, LabResponse } from "@/features/labs/api/lab.service";
 import { LabProfileTab } from "@/features/labs/components/LabProfileTab";
 import { TestDictionaryTab } from "@/features/labs/components/TestDictionaryTab";
+import ReportTemplateTab from "@/features/labs/components/ReportTemplatesTab";
 
-type SettingsTab = "profile" | "team" | "tests" | "danger";
+type SettingsTab = "profile" | "report" | "team" | "tests" | "danger";
 
 const NAVIGATION_TABS = [
-  { id: "profile", label: "Workspace Profile", icon: Building2, isDanger: false },
-  { id: "team", label: "Team & Access", icon: Users, isDanger: false },
+  { id: "profile", label: "Labspace Profile", icon: Building2, isDanger: false },
+  { id: "report", label: "Report Templates", icon: FileText, isDanger: false },
   { id: "tests", label: "Test Dictionary", icon: FlaskConical, isDanger: false },
+  { id: "team", label: "Team & Access", icon: Users, isDanger: false },
   { id: "danger", label: "Danger Zone", icon: ShieldAlert, isDanger: true },
 ];
 
@@ -241,6 +244,9 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* REPORT TEMPLATES TAB */}
+        {activeTab === "report" && <ReportTemplateTab labData={labData} />}
 
         {/* TEST DICTIONARY TAB */}
         {activeTab === "tests" && <TestDictionaryTab />}

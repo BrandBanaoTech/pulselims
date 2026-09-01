@@ -33,7 +33,7 @@ const MAIN_NAV = [
 
 const BOTTOM_NAV = [
   { 
-    name: "Workspace Settings", 
+    name: "Labspace Settings", 
     href: "/dashboard/settings", 
     icon: Settings, 
     // exact: false,
