@@ -84,9 +84,9 @@ export default function ReportTemplateTab({ labData }: ReportTemplateTabProps) {
             <h1 className="text-3xl font-black text-[var(--primary-color)] tracking-tight uppercase">
               {labData?.name || "PulseLIMS Diagnostics"}
             </h1>
-            <p className="text-xs font-bold text-gray-600 mt-1 uppercase tracking-wider">
+            {/* <p className="text-xs font-bold text-gray-600 mt-1 uppercase tracking-wider">
               {labData?.accreditation || "ISO 15189:2012 & NABL Accredited Laboratory"}
-            </p>
+            </p> */}
             <p className="text-xs text-gray-500 mt-1 max-w-sm">
               {formatAddress(labData?.address)}
               {/* {labData?.address.street_1 || "123 Health Avenue, Medical District, Cityville, 100021"} */}

@@ -7,7 +7,7 @@ export function ClassicTemplate() {
   const { activeLab, user } = useAuthStore();
   const { patient, metrics, pathologistNote, status, config } = useReportStore();
   const labName = activeLab || "Apex Diagnostics";
-  const lablogo = user?.avatar_url || "https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true";
+  const lablogo = user?.logo_url || "https://ui-avatars.com/api/?name=${encodeURIComponent(labName)}&background=${config.themeColor.replace('#', '')}&color=fff&rounded=true&bold=true";
   console.log(lablogo);
   // Mock catalog just for the visual layout mapping
   const cbcParameters = [
