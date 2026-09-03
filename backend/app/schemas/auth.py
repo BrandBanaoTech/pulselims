@@ -145,11 +145,11 @@ class UserLoginData(BaseModel):
     email: str = Field(default=False)
     full_name: str = Field(default=False)
     mobile: str = Field(default=False)
-    default_lab: str = Field(default=False)
+    default_lab: str | None = Field(default=False)
     role: str = Field(default=False)
     # permissions: str = Field(default=False)
     theme_preference: str = Field(default=False)
-    logo_url: str = Field(default=False)
+    logo_url: str | None = Field(default=False)
 
 
 # ==========================================
