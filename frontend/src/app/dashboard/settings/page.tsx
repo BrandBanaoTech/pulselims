@@ -6,19 +6,22 @@ import {
   Building2, Users, ShieldAlert, ChevronLeft, 
   Settings2, AlertCircle, Plus, Trash2, Mail, Lock,
   MapPin, Palette, FileSignature,
-  FlaskConical
+  FlaskConical,
+  FileText
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { labService, LabResponse } from "@/features/labs/api/lab.service";
 import { LabProfileTab } from "@/features/labs/components/LabProfileTab";
 import { TestDictionaryTab } from "@/features/labs/components/TestDictionaryTab";
+import ReportTemplateTab from "@/features/labs/components/ReportTemplatesTab";
 
-type SettingsTab = "profile" | "team" | "tests" | "danger";
+type SettingsTab = "profile" | "report" | "team" | "tests" | "danger";
 
 const NAVIGATION_TABS = [
-  { id: "profile", label: "Workspace Profile", icon: Building2, isDanger: false },
-  { id: "team", label: "Team & Access", icon: Users, isDanger: false },
+  { id: "profile", label: "Labspace Profile", icon: Building2, isDanger: false },
+  { id: "report", label: "Report Templates", icon: FileText, isDanger: false },
   { id: "tests", label: "Test Dictionary", icon: FlaskConical, isDanger: false },
+  { id: "team", label: "Team & Access", icon: Users, isDanger: false },
   { id: "danger", label: "Danger Zone", icon: ShieldAlert, isDanger: true },
 ];
 
@@ -122,15 +125,14 @@ export default function SettingsPage() {
     <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans pb-24 relative">
       
       {/* 1. EDITORIAL HEADER */}
-      <div className="flex items-start gap-5 mb-8">
         {/* <button 
           onClick={() => router.back()}
           className="mt-1.5 p-2.5 text-slate-400 hover:text-slate-900 hover:bg-white bg-transparent hover:shadow-sm border border-transparent hover:border-slate-200 rounded-2xl transition-all focus:outline-none focus:ring-2 focus:ring-slate-200 shrink-0 group"
           aria-label="Go back"
-        >
+          >
           <ChevronLeft size={24} strokeWidth={2.5} className="group-hover:-translate-x-0.5 transition-transform" />
-        </button> */}
-
+          </button> */}
+      {/* <div className="flex items-start gap-5 mb-8">
         <div className="pt-1">
           <div className="flex items-center gap-2.5 text-teal-600 mb-2">
             <Settings2 size={16} strokeWidth={2.5} />
@@ -141,7 +143,9 @@ export default function SettingsPage() {
             Manage compliance metadata, configure team access protocols, and control deep system integrations for <span className="font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded-md border border-slate-200/60">{labData.name}</span>.
           </p>
         </div>
-      </div>
+      </div> */}
+
+      
 
       {/* 2. MINIMALIST TAB NAVIGATION (Vercel Style) */}
       <div className="sticky top-0 z-30 pt-2 pb-4 bg-[#F8FAFC]/90 backdrop-blur-xl border-b border-slate-200/80 mb-6">
@@ -240,6 +244,9 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        {/* REPORT TEMPLATES TAB */}
+        {activeTab === "report" && <ReportTemplateTab labData={labData} />}
 
         {/* TEST DICTIONARY TAB */}
         {activeTab === "tests" && <TestDictionaryTab />}
