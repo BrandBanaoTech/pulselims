@@ -52,7 +52,7 @@ export default function DashboardOverviewPage() {
         {/* ========================================================= */}
         {/* 2. CLINICAL STATS GRID                                    */}
         {/* ========================================================= */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm flex items-center gap-5 hover:border-teal-400 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
             <div className="p-4 bg-teal-50 text-teal-600 rounded-2xl">
@@ -60,7 +60,7 @@ export default function DashboardOverviewPage() {
             </div>
             <div>
               <span className="text-xs text-slate-400 font-black uppercase block tracking-wider">Total Patients</span>
-              {/* <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{totalIntake}</span> */}
+              <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{totalIntake}</span>
             </div>
           </div>
 
@@ -71,7 +71,7 @@ export default function DashboardOverviewPage() {
             </div>
             <div>
               <span className="text-xs text-slate-400 font-black uppercase block tracking-wider">Draft Queue</span>
-              {/* <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{pendingReports}</span> */}
+              <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{pendingReports}</span>
             </div>
           </div>
 
@@ -81,7 +81,7 @@ export default function DashboardOverviewPage() {
             </div>
             <div>
               <span className="text-xs text-slate-400 font-black uppercase block tracking-wider">Signed Reports</span>
-              {/* <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{completedReports}</span> */}
+              <span className="text-3xl font-black text-slate-900 leading-tight mt-0.5 block">{completedReports}</span>
             </div>
           </div>
 
@@ -92,12 +92,12 @@ export default function DashboardOverviewPage() {
             <div>
               <span className="text-xs text-slate-400 font-black uppercase block tracking-wider">Revenue Ledger</span>
               <span className="text-3xl font-black font-mono text-slate-900 leading-tight mt-0.5 block">
-                {/* {totalRevenue.toLocaleString("en-IN")} */}
+                {totalRevenue.toLocaleString("en-IN")}
               </span>
             </div>
           </div>
 
-        </div>
+        </div> */}
       </main>
     </div>
   );

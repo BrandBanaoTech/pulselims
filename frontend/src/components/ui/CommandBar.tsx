@@ -1,7 +1,7 @@
 import React from "react";
 import { Search } from "lucide-react";
 
-interface FilterOption { label: string; value: string; }
+interface FilterOption { label: string; value: string; count?: number; }
 
 interface CommandBarProps {
   searchQuery: string;
@@ -37,6 +37,15 @@ export function CommandBar({ searchQuery, onSearchChange, searchPlaceholder = "S
                 }`}
               >
                 {opt.label}
+                {opt.count !== undefined && (
+                    <span className={`px-1.5 py-0.5 ml-1 rounded-md text-[10px] font-mono leading-none transition-colors ${
+                      activeFilter === opt.value 
+                        ? "bg-teal-50 text-teal-700 font-black" 
+                        : "bg-slate-200/70 text-slate-500 font-bold"
+                    }`}>
+                      {opt.count}
+                    </span>
+                  )}
               </button>
             ))}
           </div>

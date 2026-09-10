@@ -16,18 +16,18 @@ import { useAuthStore } from "@/store/useAuthStore";
 // CLINICAL NAVIGATION SCHEMA
 // ==========================================
 const MAIN_NAV = [
-  { name: "Clinical Overview", href: "/dashboard", icon: LayoutDashboard, exact: true },
   { 
     name: "Patient Intakes", 
     href: "/dashboard/intakes", 
     icon: ListPlus, 
     exact: false,
     // subOptions: [
-    //   { name: "New Registration", href: "/dashboard/intake", icon: Plus },
-    //   { name: "Patient Directory", href: "/dashboard/patients", icon: FileText },
-    //   { name: "Clinical History", href: "/dashboard/history", icon: History },
-    // ]
-  },
+      //   { name: "New Registration", href: "/dashboard/intake", icon: Plus },
+      //   { name: "Patient Directory", href: "/dashboard/patients", icon: FileText },
+      //   { name: "Clinical History", href: "/dashboard/history", icon: History },
+      // ]
+    },
+  // { name: "Clinical Overview", href: "/dashboard", icon: LayoutDashboard, exact: true },
   // { name: "Test Dictionary", href: "/dashboard/tests", icon: FlaskConical, exact: false },
 ];
 

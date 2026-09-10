@@ -11,7 +11,7 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, description, eyebrow, icon: Icon, children }: PageHeaderProps) {
   return (
-    <header className="mb-6 lg:mb-8">
+    <header className="mb-6 lg:mb-6">
       {(eyebrow || Icon) && (
         <div className="flex items-center gap-2.5 text-teal-600 mb-2">
           {Icon && <Icon size={18} strokeWidth={2.5} />}
