@@ -1,41 +1,46 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, ListPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Plus, ListPlus, SearchX, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
-import { api } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 
+// Core UI Components
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { CommandBar } from "@/components/ui/CommandBar";
+import { CommandBar, type FilterOption } from "@/components/ui/CommandBar";
 import { Button } from "@/components/ui/Button";
-// import { IntakeList } from "@/features/intake/componenets/IntakeList";
 
-// Import your new separated components
-// import { IntakeList } from "./components/IntakeList";
-// import { NewIntakeDrawer } from "./components/NewIntakeDrawer";
-// import { CollectBalanceModal } from "./components/CollectBalanceModal";
+// Feature Imports
+import { IntakeRow, type IntakeActions } from "@/features/intake/componenets/IntakeRow";
+import { intakeApi } from "@/features/intake/api/intake.api";
+import type { IntakeRecord } from "@/features/intake/schemas/intake.schema";
 
 export default function IntakesPage() {
+  const router = useRouter();
   const { token } = useAuthStore();
 
-  // Global Queue State
-  const [intakes, setIntakes] = useState<any[]>([]);
+  // ==========================================
+  // 1. STATE MANAGEMENT
+  // ==========================================
+  const [intakes, setIntakes] = useState<IntakeRecord[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
   
-  // View/Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  // Modals State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [collectBalanceRecord, setCollectBalanceRecord] = useState<any | null>(null);
+  const [collectBalanceRecord, setCollectBalanceRecord] = useState<IntakeRecord | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  // ==========================================
+  // 2. API & DATA FETCHING
+  // ==========================================
   const fetchIntakesQueue = useCallback(async () => {
     try {
       setIsLoadingQueue(true);
-      const res = await api.get('/intakes');
-      setIntakes(res.data);
+      const data = await intakeApi.getAll();
+      setIntakes(data);
     } catch (error: any) {
       toast.error("Failed to load operations queue.");
     } finally {
@@ -47,7 +52,46 @@ export default function IntakesPage() {
     if (token) fetchIntakesQueue();
   }, [token, fetchIntakesQueue]);
 
-  // High-Performance Filtering & Counting
+  // Global click-outside listener to close action menus
+  useEffect(() => {
+    const closeMenu = () => setOpenMenuId(null);
+    if (openMenuId) document.addEventListener("click", closeMenu);
+    return () => document.removeEventListener("click", closeMenu);
+  }, [openMenuId]);
+
+  // ==========================================
+  // 3. ROW ACTIONS BUNDLE
+  // ==========================================
+  const rowActions: IntakeActions = useMemo(() => ({
+    isMenuOpen: (id) => openMenuId === id,
+    toggleMenu: (id) => setOpenMenuId(prev => prev === id ? null : id),
+    view: (id) => router.push(`/dashboard/reports/${id}`),
+    
+    updateStatus: async (id, current) => {
+      const next = current === "processing" ? "completed" : current === "completed" ? "registered" : "processing";
+      try {
+        await intakeApi.updateStatus(id, next);
+        toast.success("Status Updated");
+        fetchIntakesQueue(); 
+      } catch { toast.error("Update failed."); }
+    },
+    
+    collectBalance: (data) => setCollectBalanceRecord(data),
+    
+    delete: async (id, name) => {
+      setOpenMenuId(null);
+      if (!window.confirm(`Cancel order for ${name}?`)) return;
+      try {
+        await intakeApi.delete(id);
+        toast.success("Order Cancelled");
+        fetchIntakesQueue(); 
+      } catch { toast.error("Deletion failed."); }
+    }
+  }), [openMenuId, router, fetchIntakesQueue]);
+
+  // ==========================================
+  // 4. HIGH-PERFORMANCE FILTERING
+  // ==========================================
   const filteredIntakes = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     return intakes.filter(p => {
@@ -66,62 +110,398 @@ export default function IntakesPage() {
     completed: intakes.filter(i => i.status === "completed").length,
   }), [intakes]);
 
+  // 🚀 The Smart Filters mapped with Contextual Colors
+  const filterOptions: FilterOption[] = [
+    { label: "All", value: "All", count: counts.all, color: "slate" },
+    { label: "New", value: "registered", count: counts.registered, color: "blue" },
+    { label: "Queue", value: "processing", count: counts.processing, color: "amber" },
+    { label: "Ready", value: "completed", count: counts.completed, color: "emerald" },
+  ];
+
+  // ==========================================
+  // 5. RENDER ORCHESTRATION
+  // ==========================================
   return (
-    <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans pb-24 relative max-w-[1600px] mx-auto w-full pt-6">
+    <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans relative max-w-[1600px] mx-auto w-full">
       
-      {/* <SectionHeader 
-        title="Intakes" 
-        hint="Manage intake registrations, process billing, and track diagnostic workflows in real-time." 
+      <SectionHeader 
+        title="Intakes Queue" 
+        hint="Manage registrations, process billing, and track diagnostic workflows in real-time." 
         icon={ListPlus} 
         badgeColor="emerald" 
-      /> */}
+      />
 
+      {/* 🚀 1. The Context-Aware CommandBar */}
       <CommandBar 
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
-        searchPlaceholder="Search Accession, Name, Phone..."
-        filters={[
-          { label: "All", value: "All", count: counts.all },
-          { label: "New", value: "registered", count: counts.registered },
-          { label: "Queue", value: "processing", count: counts.processing },
-          { label: "Ready", value: "completed", count: counts.completed },
-        ]}
+        searchPlaceholder="Search Accession, Patient, Phone..."
+        filters={filterOptions}
         activeFilter={statusFilter}
         onFilterChange={setStatusFilter}
         action={
-          <Button variant="dark" icon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>
+          <Button variant="dark" icon={<Plus size={16} strokeWidth={2.5} />} onClick={() => setIsDrawerOpen(true)}>
              <span className="hidden sm:inline">New Intake</span>
           </Button>
         }
       />
-      
 
-      {/* The Extracted UI Component */}
-      {/* <IntakeList 
-        data={filteredIntakes} 
-        isLoading={isLoadingQueue} 
-        onRefresh={fetchIntakesQueue}
-        onCollectBalance={(record) => setCollectBalanceRecord(record)}
-      /> */}
+      {/* 🚀 2. THE UNIFIED LEDGER TABLE */}
+      <div role="table" aria-label="Intakes Directory" className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        {/* 🖥️ Desktop Header (Strict 12-Column Grid Alignment) */}
+        <div role="rowgroup" className="hidden lg:block bg-slate-50/80 border-b border-slate-200/80">
+          <div role="row" className="grid grid-cols-12 gap-6 px-6 py-3.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-widest">
+            <div role="columnheader" className="col-span-3">Patient Details</div>
+            <div role="columnheader" className="col-span-3">Diagnostics</div>
+            <div role="columnheader" className="col-span-2">Billing Ledger</div>
+            <div role="columnheader" className="col-span-3">Workflow Status</div>
+            <div role="columnheader" className="col-span-1 text-right">Actions</div>
+          </div>
+        </div>
 
-      {/* Extracted Forms & Modals (They handle their own state!) */}
-      {/* <NewIntakeDrawer 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
-        onSuccess={fetchIntakesQueue} 
-      /> */}
+        {/* 📄 Table Body (Paper-Thin Dividers) */}
+        <div role="rowgroup" className="divide-y divide-slate-100/80">
+          
+          {isLoadingQueue ? (
+            <div className="py-24 flex flex-col items-center justify-center text-slate-500 bg-white/50">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
+              <p className="font-semibold text-sm">Loading operations queue...</p>
+            </div>
+          ) : filteredIntakes.length === 0 ? (
+            <div className="py-24 flex flex-col items-center text-center bg-white/50">
+              <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-full ring-1 ring-slate-200 flex items-center justify-center mb-4">
+                <SearchX size={24} strokeWidth={2} />
+              </div>
+              <h3 className="text-base font-black text-slate-900">No records found</h3>
+              <button 
+                onClick={() => { setSearchQuery(""); setStatusFilter("All"); }} 
+                className="mt-4 text-xs font-bold text-slate-600 uppercase tracking-widest hover:text-indigo-600 outline-none transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            /* 🚀 The Rows: Passing the `isColorized` toggle based on the filter! */
+            filteredIntakes.map((intake) => (
+              <IntakeRow 
+                key={intake.id} 
+                data={intake} 
+                actions={rowActions}
+              />
+            ))
+          )}
 
-      {/* {collectBalanceRecord && (
-        <CollectBalanceModal 
-          record={collectBalanceRecord}
-          onClose={() => setCollectBalanceRecord(null)}
-          onSuccess={fetchIntakesQueue}
-        />
-      )} */}
+        </div>
+      </div>
+
+      {/* Drawers / Modals */}
+      {/* <NewIntakeDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} onSuccess={fetchIntakesQueue} /> */}
+      {/* {collectBalanceRecord && <CollectBalanceModal record={collectBalanceRecord} onClose={() => setCollectBalanceRecord(null)} onSuccess={fetchIntakesQueue} />} */}
 
     </div>
   );
 }
+// "use client";
+
+// import { useState, useMemo, useEffect, useCallback } from "react";
+// import { useRouter } from "next/navigation";
+// import { Plus, ListPlus, SearchX, Loader2 } from "lucide-react";
+// import { useAuthStore } from "@/store/useAuthStore";
+// import { toast } from "@/lib/toast";
+
+// // Core UI Components
+// import { SectionHeader } from "@/components/ui/SectionHeader";
+// import { CommandBar } from "@/components/ui/CommandBar";
+// import { Button } from "@/components/ui/Button";
+
+// // Feature Imports
+// import { IntakeRow, type IntakeActions } from "@/features/intake/componenets/IntakeRow";
+// import { intakeApi } from "@/features/intake/api/intake.api";
+// import type { IntakeRecord } from "@/features/intake/schemas/intake.schema";
+
+// // 🚀 The single source of truth for the CSS Grid layout (Shared by Header and Rows)
+// const GRID_LAYOUT = "lg:grid-cols-[2.5fr_1.8fr_1.5fr_1.2fr_40px]";
+
+// export default function IntakesPage() {
+//   const router = useRouter();
+//   const { token } = useAuthStore();
+
+//   // ==========================================
+//   // 1. STATE MANAGEMENT
+//   // ==========================================
+//   const [intakes, setIntakes] = useState<IntakeRecord[]>([]);
+//   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [statusFilter, setStatusFilter] = useState("All");
+
+//   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+//   const [collectBalanceRecord, setCollectBalanceRecord] = useState<IntakeRecord | null>(null);
+//   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+//   // ==========================================
+//   // 2. API & DATA FETCHING
+//   // ==========================================
+//   const fetchIntakesQueue = useCallback(async () => {
+//     try {
+//       setIsLoadingQueue(true);
+//       const data = await intakeApi.getAll();
+//       setIntakes(data);
+//     } catch (error: any) {
+//       toast.error("Failed to load operations queue.");
+//     } finally {
+//       setIsLoadingQueue(false);
+//     }
+//   }, []);
+
+//   useEffect(() => {
+//     if (token) fetchIntakesQueue();
+//   }, [token, fetchIntakesQueue]);
+
+//   // Global click-outside listener to close action menus
+//   useEffect(() => {
+//     const closeMenu = () => setOpenMenuId(null);
+//     if (openMenuId) document.addEventListener("click", closeMenu);
+//     return () => document.removeEventListener("click", closeMenu);
+//   }, [openMenuId]);
+
+//   // ==========================================
+//   // 3. ROW ACTIONS BUNDLE
+//   // ==========================================
+//   const rowActions: IntakeActions = useMemo(() => ({
+//     isMenuOpen: (id) => openMenuId === id,
+//     toggleMenu: (id) => setOpenMenuId(prev => prev === id ? null : id),
+//     view: (id) => router.push(`/dashboard/reports/${id}`),
+    
+//     updateStatus: async (id, current) => {
+//       const next = current === "processing" ? "completed" : current === "completed" ? "registered" : "processing";
+//       try {
+//         await intakeApi.updateStatus(id, next);
+//         toast.success("Status Updated");
+//         fetchIntakesQueue(); 
+//       } catch { toast.error("Update failed."); }
+//     },
+    
+//     collectBalance: (data) => setCollectBalanceRecord(data),
+    
+//     delete: async (id, name) => {
+//       setOpenMenuId(null);
+//       if (!window.confirm(`Cancel order for ${name}?`)) return;
+//       try {
+//         await intakeApi.delete(id);
+//         toast.success("Order Cancelled");
+//         fetchIntakesQueue(); 
+//       } catch { toast.error("Deletion failed."); }
+//     }
+//   }), [openMenuId, router, fetchIntakesQueue]);
+
+//   // ==========================================
+//   // 4. HIGH-PERFORMANCE FILTERING
+//   // ==========================================
+//   const filteredIntakes = useMemo(() => {
+//     const query = searchQuery.toLowerCase().trim();
+//     return intakes.filter(p => {
+//       const matchSearch = (p.patient_name || "").toLowerCase().includes(query) || 
+//                           (p.patient_phone || "").toLowerCase().includes(query) || 
+//                           (p.accession_number || "").toLowerCase().includes(query);
+//       const matchStatus = statusFilter === "All" ? true : p.status === statusFilter;
+//       return matchSearch && matchStatus;
+//     });
+//   }, [intakes, searchQuery, statusFilter]);
+
+//   const counts = useMemo(() => ({
+//     all: intakes.length,
+//     registered: intakes.filter(i => i.status === "registered").length,
+//     processing: intakes.filter(i => i.status === "processing").length,
+//     completed: intakes.filter(i => i.status === "completed").length,
+//   }), [intakes]);
+
+//   // ==========================================
+//   // 5. RENDER ORCHESTRATION
+//   // ==========================================
+//   return (
+//     <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans pb-24 relative max-w-[1600px] mx-auto w-full pt-6">
+      
+//       <SectionHeader 
+//         title="Intakes Queue" 
+//         hint="Manage intake registrations, process billing, and track diagnostic workflows in real-time." 
+//         icon={ListPlus} 
+//         badgeColor="emerald" 
+//       />
+
+//       <CommandBar 
+//         searchQuery={searchQuery}
+//         onSearchChange={setSearchQuery}
+//         searchPlaceholder="Search Accession, Name, Phone..."
+//         filters={[
+//           { label: "All", value: "All", count: counts.all },
+//           { label: "New", value: "registered", count: counts.registered },
+//           { label: "Queue", value: "processing", count: counts.processing },
+//           { label: "Ready", value: "completed", count: counts.completed },
+//         ]}
+//         activeFilter={statusFilter}
+//         onFilterChange={setStatusFilter}
+//         action={
+//           <Button variant="dark" icon={<Plus size={16} strokeWidth={2.5} />} onClick={() => setIsDrawerOpen(true)}>
+//              <span className="hidden sm:inline">New Intake</span>
+//           </Button>
+//         }
+//       />
+
+//       {/* 🚀 THE UNIFIED LEDGER TABLE */}
+// <div role="table" aria-label="Intakes Directory" className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+  
+//   {/* TABLE HEADER (Hidden on mobile) */}
+//   <div role="rowgroup" className="hidden lg:block bg-slate-50/80 border-b border-slate-200/80">
+//     <div role="row" className="grid grid-cols-12 gap-6 px-6 py-3.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-widest">
+//       <div role="columnheader" className="col-span-3">Patient Details</div>
+//       <div role="columnheader" className="col-span-3">Diagnostics</div>
+//       <div role="columnheader" className="col-span-2">Billing Ledger</div>
+//       <div role="columnheader" className="col-span-3">Workflow Status</div>
+//       <div role="columnheader" className="col-span-1 text-right sr-only">Actions</div>
+//     </div>
+//   </div>
+
+//   {/* TABLE BODY (The Paper-Thin Dividers) */}
+//   <div role="rowgroup" className="divide-y divide-slate-100/80">
+    
+//     {isLoadingQueue ? (
+//       <div className="py-24 flex flex-col items-center justify-center text-slate-500 bg-white/50">
+//         <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-3" />
+//         <p className="font-semibold text-sm">Loading operations queue...</p>
+//       </div>
+//     ) : filteredIntakes.length === 0 ? (
+//       <div className="py-24 flex flex-col items-center text-center bg-white/50">
+//         <div className="w-14 h-14 bg-slate-50 text-slate-400 rounded-full ring-1 ring-slate-200 flex items-center justify-center mb-4">
+//           <SearchX size={24} strokeWidth={2} />
+//         </div>
+//         <h3 className="text-base font-black text-slate-900">No records found</h3>
+//         <button onClick={() => { setSearchQuery(""); setStatusFilter("All"); }} className="mt-4 text-xs font-bold text-slate-600 uppercase tracking-widest hover:text-indigo-600 outline-none transition-colors">
+//           Clear Filters
+//         </button>
+//       </div>
+//     ) : (
+//       /* Loop exactly through the new rows */
+//       filteredIntakes.map((intake) => (
+//         <IntakeRow 
+//           key={intake.id} 
+//           data={intake} 
+//           actions={rowActions} 
+//         />
+//       ))
+//     )}
+
+//   </div>
+// </div>
+//     </div>
+//   );
+// }
+
+// "use client";
+
+// import { useState, useMemo, useEffect, useCallback } from "react";
+// import { Plus, ListPlus, Clock } from "lucide-react";
+// import { useAuthStore } from "@/store/useAuthStore";
+// import { api } from "@/lib/axios";
+// import { toast } from "@/lib/toast";
+
+// import { SectionHeader } from "@/components/ui/SectionHeader";
+// import { CommandBar } from "@/components/ui/CommandBar";
+// import { Button } from "@/components/ui/Button";
+// import { IntakeRow } from "@/features/intake/componenets/IntakeRow";
+
+// // Import your new separated components
+// // import { IntakeList } from "./components/IntakeList";
+// // import { NewIntakeDrawer } from "./components/NewIntakeDrawer";
+// // import { CollectBalanceModal } from "./components/CollectBalanceModal";
+
+// export default function IntakesPage() {
+//   const { token } = useAuthStore();
+
+//   // Global Queue State
+//   const [intakes, setIntakes] = useState<any[]>([]);
+//   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  
+//   // View/Filter State
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [statusFilter, setStatusFilter] = useState("All");
+
+//   // Modals State
+//   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+//   const [collectBalanceRecord, setCollectBalanceRecord] = useState<any | null>(null);
+
+//   const fetchIntakesQueue = useCallback(async () => {
+//     try {
+//       setIsLoadingQueue(true);
+//       const res = await api.get('/intakes');
+//       setIntakes(res.data);
+//     } catch (error: any) {
+//       toast.error("Failed to load operations queue.");
+//     } finally {
+//       setIsLoadingQueue(false);
+//     }
+//   }, []);
+
+//   useEffect(() => {
+//     if (token) fetchIntakesQueue();
+//   }, [token, fetchIntakesQueue]);
+
+//   // High-Performance Filtering & Counting
+//   const filteredIntakes = useMemo(() => {
+//     const query = searchQuery.toLowerCase().trim();
+//     return intakes.filter(p => {
+//       const matchSearch = (p.patient_name || "").toLowerCase().includes(query) || 
+//                           (p.patient_phone || "").toLowerCase().includes(query) || 
+//                           (p.accession_number || "").toLowerCase().includes(query);
+//       const matchStatus = statusFilter === "All" ? true : p.status === statusFilter;
+//       return matchSearch && matchStatus;
+//     });
+//   }, [intakes, searchQuery, statusFilter]);
+
+//   const counts = useMemo(() => ({
+//     all: intakes.length,
+//     registered: intakes.filter(i => i.status === "registered").length,
+//     processing: intakes.filter(i => i.status === "processing").length,
+//     completed: intakes.filter(i => i.status === "completed").length,
+//   }), [intakes]);
+
+//   return (
+//     <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans pb-24 relative max-w-[1600px] mx-auto w-full pt-6">
+      
+//       {/* <SectionHeader 
+//         title="Intakes" 
+//         hint="Manage intake registrations, process billing, and track diagnostic workflows in real-time." 
+//         icon={ListPlus} 
+//         badgeColor="emerald" 
+//       /> */}
+
+//       <CommandBar 
+//         searchQuery={searchQuery}
+//         onSearchChange={setSearchQuery}
+//         searchPlaceholder="Search Accession, Name, Phone..."
+//         filters={[
+//           { label: "All", value: "All", count: counts.all },
+//           { label: "New", value: "registered", count: counts.registered },
+//           { label: "Queue", value: "processing", count: counts.processing },
+//           { label: "Ready", value: "completed", count: counts.completed },
+//         ]}
+//         activeFilter={statusFilter}
+//         onFilterChange={setStatusFilter}
+//         action={
+//           <Button variant="dark" icon={<Plus size={16} />} onClick={() => setIsDrawerOpen(true)}>
+//              <span className="hidden sm:inline">New Intake</span>
+//           </Button>
+//         }
+//       />
+
+//       {filteredIntakes.map((intake) => (
+//         <IntakeRow  />
+//       ))}
+
+//     </div>
+//   );
+// }
 
 // "use client";
 
