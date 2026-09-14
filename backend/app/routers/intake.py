@@ -132,7 +132,53 @@ def list_intakes(
     if phone: stmt = stmt.where(Intake.patient_phone.ilike(f"%{phone}%"))
 
     stmt = stmt.order_by(Intake.intake_date.desc()).limit(limit).offset(offset)
-    return db.execute(stmt).scalars().all()
+    
+    # return db.execute(stmt).scalars().all()
+
+    record = [{
+        "id": "6537e12f-81f7-4ce0-9aa8-47dd73316aad",
+        "lab_id": "df4a557a-036e-428d-ae52-cb4b54730b6c",
+        "accession_number": "ACC-1000",
+        "patient_name": "New Name",
+        "patient_phone": "9876543210",
+        "patient_age": 28,
+        "patient_gender": "M",
+        "patient_address": None,
+        "priority": "Routine",
+        "referring_doctor": None,
+        "clinical_notes": None,
+        "test_ids": ["bd56f244-9a0c-4621-91b9-6032daa2e9df"],
+        "tests": ["CBC", "Lipid", "KFT", "LFT"],
+        "status": "registered",
+        "intake_date": "2026-08-17T02:22:07",
+        "sample_collection_date": None,
+        "updated_at": "2026-09-11T01:08:13",
+        "payment_status": "Unpaid",
+        "payment_method": "UPI",
+        "discount_type": "percentage",
+        "discount_value": "10.00",
+        "gross_amount": "350.00",
+        "discount_amount": "35.00",
+        "net_amount": "315.00",
+        "paid_amount": "0.00",
+        "balance_due": "315.00",
+    }]
+    return record
+
+
+@router.get("/{intake_id}", response_model=IntakeResponse)
+def get_intake(
+    intake_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    token: TokenPayload = Depends(require_lab_permission("manage_intakes"))
+):
+    user_uuid = uuid.UUID(token.sub)
+    user_lab_id = db.execute(select(User.default_lab_id).where(User.id == user_uuid)).scalar()
+
+    intake = db.execute(select(Intake).where(Intake.id == intake_id, Intake.lab_id == user_lab_id)).scalars().first()
+    if not intake: raise HTTPException(status_code=404, detail="Order not found.")
+
+    return intake
 
 
 @router.put("/{intake_id}", response_model=IntakeResponse)

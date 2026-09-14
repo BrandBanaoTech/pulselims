@@ -155,8 +155,8 @@ export default function IntakesPage() {
             <div role="columnheader" className="col-span-3">Patient Details</div>
             <div role="columnheader" className="col-span-3">Diagnostics</div>
             <div role="columnheader" className="col-span-2">Billing Ledger</div>
-            <div role="columnheader" className="col-span-3">Workflow Status</div>
-            <div role="columnheader" className="col-span-1 text-right">Actions</div>
+            <div role="columnheader" className="col-span-2">Workflow Status</div>
+            <div role="columnheader" className="col-span-2 text-right">Actions</div>
           </div>
         </div>
 

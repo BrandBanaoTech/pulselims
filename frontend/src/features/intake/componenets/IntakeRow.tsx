@@ -25,7 +25,7 @@ export const IntakeRow = memo(({
   data?: Partial<IntakeRecord>; 
   actions?: IntakeActions;
 }) => {
-  const { id = "", patient_phone = "N/A", accession_number = "N/A", patient_name = "Unknown", patient_age = "-", patient_gender = "-", priority = "Routine", test_ids = [], net_amount = 0, balance_due = 0, status = "registered", intake_date } = data;
+  const { id = "", patient_phone = "N/A", accession_number = "N/A", patient_name = "Unknown", patient_age = "-", patient_gender = "-", priority = "Routine", tests = [], net_amount = 0, balance_due = 0, status = "registered", intake_date } = data;
 
   const isOpen = actions.isMenuOpen?.(id);
   return (
@@ -65,15 +65,15 @@ export const IntakeRow = memo(({
               <ShieldAlert size={10} strokeWidth={2.5} /> STAT
             </span>
           )}
-          {test_ids.length === 0 && <span className="text-[10px] font-medium text-slate-400 italic">No tests</span>}
-          {test_ids.slice(0, 2).map((tId, idx) => (
+          {tests.length === 0 && <span className="text-[10px] font-medium text-slate-400 italic">No tests</span>}
+          {tests.slice(0, 2).map((test, idx) => (
             <span key={idx} className={`${CHIP} bg-white/60 backdrop-blur-sm text-slate-600 border-slate-200/60`}>
-              {tId}
+              {test}
             </span>
           ))}
-          {test_ids.length > 2 && (
+          {tests.length > 2 && (
             <span className={`${CHIP} bg-white/40 text-slate-500 border-slate-200/40`}>
-              +{test_ids.length - 2}
+              +{tests.length - 2}
             </span>
           )}
         </div>
@@ -97,7 +97,7 @@ export const IntakeRow = memo(({
       </div>
 
       {/* 4. Status */}
-      <div role="cell" className="col-span-3 flex lg:flex-col lg:items-start items-center">
+      <div role="cell" className="col-span-2 flex lg:flex-col lg:items-start items-center">
         <span className="lg:hidden w-24 shrink-0 text-xs font-semibold text-slate-400 uppercase">Status</span>
         <div>
           {/* 🚀 Glassy Button */}
@@ -114,7 +114,7 @@ export const IntakeRow = memo(({
       </div>
 
       {/* 5. Actions */}
-      <div role="cell" className="col-span-1 flex items-center lg:justify-end gap-2 mt-3 lg:mt-0 pt-3 lg:pt-0 border-t border-slate-100/50 lg:border-none">
+      <div role="cell" className="col-span-2 flex items-center lg:justify-end gap-2 mt-3 lg:mt-0 pt-3 lg:pt-0 border-t border-slate-100/50 lg:border-none">
         
         <div className="flex items-center gap-1.5">
           <button onClick={(e) => { e.stopPropagation(); actions.view?.(id); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white/80 rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 shadow-sm border border-transparent hover:border-slate-200/60 backdrop-blur-sm">

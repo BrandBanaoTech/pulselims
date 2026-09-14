@@ -130,6 +130,7 @@ class IntakeResponse(BaseModel):
     referring_doctor: Optional[str] = None
     clinical_notes: Optional[str] = None
     test_ids: List[UUID4]
+    tests: List[str] = None
     
     # Workflow
     status: IntakeStatusEnum

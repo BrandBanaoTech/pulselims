@@ -2,6 +2,8 @@ import { api } from "@/lib/axios"; // Your central authenticated Axios instance
 import { CreateLabFormValues, LabUpdateValues, LabDeletionChallengeValues } from "../schemas/lab.schema";
 
 export interface LabResponse {
+  accreditation: string;
+  template: { primary_color: string; secondary_color: string; accent_color: string; header_layout: "split"; font_family: string; };
   id: string;
   owner_id: string;
   name: string;

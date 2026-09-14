@@ -27,6 +27,7 @@ export const IntakeRecordSchema = z.object({
   // Clinical
   priority: PriorityEnum,
   test_ids: z.array(z.string()),
+  tests: z.array(z.string()),
   status: IntakeStatusEnum,
   intake_date: z.iso.datetime(),
   
