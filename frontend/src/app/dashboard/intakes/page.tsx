@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ListPlus, SearchX, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -15,6 +15,18 @@ import { Button } from "@/components/ui/Button";
 import { IntakeRow, type IntakeActions } from "@/features/intake/componenets/IntakeRow";
 import { intakeApi } from "@/features/intake/api/intake.api";
 import type { IntakeRecord } from "@/features/intake/schemas/intake.schema";
+import { NewIntakeDrawer } from "@/features/intake/componenets/NewIntakeDrawer";
+import { api } from "@/lib/axios";
+
+
+interface LabTest {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  price: number;
+  tat: string;
+}
 
 export default function IntakesPage() {
   const router = useRouter();
@@ -33,6 +45,13 @@ export default function IntakesPage() {
   const [collectBalanceRecord, setCollectBalanceRecord] = useState<IntakeRecord | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
+  const [availableTests, setAvailableTests] = useState<LabTest[]>([]);
+  const [selectedTests, setSelectedTests] = useState<LabTest[]>([]);
+  const [isFetchingTests, setIsFetchingTests] = useState(false);
+  const [testSearchQuery, setTestSearchQuery] = useState("");
+  const [isTestDropdownOpen, setIsTestDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // ==========================================
   // 2. API & DATA FETCHING
   // ==========================================
@@ -47,6 +66,26 @@ export default function IntakesPage() {
       setIsLoadingQueue(false);
     }
   }, []);
+
+  const fetchActiveTests = useCallback(async () => {
+      try {
+        setIsFetchingTests(true);
+        const res = await api.get('/tests?is_active=true');
+        setAvailableTests(res.data);
+      } catch (error) {
+        toast.error("Dictionary Error", formatApiError(error));
+      } finally {
+        setIsFetchingTests(false);
+      }
+  }, []);
+
+  const filteredComboboxTests = useMemo(() => {
+    const query = testSearchQuery.toLowerCase().trim();
+    return availableTests.filter(test => 
+      !selectedTests.find(t => t.id === test.id) &&
+      ((test.name || "").toLowerCase().includes(query) || (test.code || "").toLowerCase().includes(query))
+    );
+  }, [availableTests, selectedTests, testSearchQuery]);
 
   useEffect(() => {
     if (token) fetchIntakesQueue();
@@ -113,7 +152,7 @@ export default function IntakesPage() {
   // 🚀 The Smart Filters mapped with Contextual Colors
   const filterOptions: FilterOption[] = [
     { label: "All", value: "All", count: counts.all, color: "slate" },
-    { label: "New", value: "registered", count: counts.registered, color: "blue" },
+    { label: "New", value: "registered", count: counts.registered, color: "teal" },
     { label: "Queue", value: "processing", count: counts.processing, color: "amber" },
     { label: "Ready", value: "completed", count: counts.completed, color: "emerald" },
   ];
@@ -140,7 +179,7 @@ export default function IntakesPage() {
         activeFilter={statusFilter}
         onFilterChange={setStatusFilter}
         action={
-          <Button variant="dark" icon={<Plus size={16} strokeWidth={2.5} />} onClick={() => setIsDrawerOpen(true)}>
+          <Button variant="primary" icon={<Plus size={16} strokeWidth={2.5} />} onClick={() => setIsDrawerOpen(true)}>
              <span className="hidden sm:inline">New Intake</span>
           </Button>
         }
@@ -195,12 +234,28 @@ export default function IntakesPage() {
         </div>
       </div>
 
+      <NewIntakeDrawer isopen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+
       {/* Drawers / Modals */}
+      {/* {isDrawerOpen && (
+        <NewIntakeDrawer 
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          onSuccess={() => {
+            fetchIntakesQueue(); // Re-fetch the table data!
+          }}
+          availableTests={availableTests} // Pass the dictionary you fetched in page.tsx
+        />
+      )} */}
       {/* <NewIntakeDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} onSuccess={fetchIntakesQueue} /> */}
       {/* {collectBalanceRecord && <CollectBalanceModal record={collectBalanceRecord} onClose={() => setCollectBalanceRecord(null)} onSuccess={fetchIntakesQueue} />} */}
 
     </div>
   );
+}
+
+function formatApiError(error: unknown): string | undefined {
+  throw new Error("Function not implemented.");
 }
 // "use client";
 

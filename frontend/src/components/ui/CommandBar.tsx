@@ -1,7 +1,7 @@
 import React from "react";
 import { Search } from "lucide-react";
 
-export type FilterColor = 'slate' | 'blue' | 'amber' | 'emerald' | 'rose';
+export type FilterColor = 'slate' | 'teal' | 'blue' | 'amber' | 'emerald' | 'rose';
 
 export interface FilterOption { 
   label: string; 
@@ -25,6 +25,7 @@ const getActivePillStyle = (color: FilterColor = 'slate') => {
   const styles = {
     slate: "bg-white text-slate-900 shadow-sm border border-slate-200/80",
     blue: "bg-blue-50 text-blue-700 shadow-sm border border-blue-200/80",
+    teal: "bg-teal-50 text-teal-700 shadow-sm border border-teal-200/80",
     amber: "bg-amber-50 text-amber-700 shadow-sm border border-amber-200/80",
     emerald: "bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-200/80",
     rose: "bg-rose-50 text-rose-700 shadow-sm border border-rose-200/80",
@@ -39,6 +40,7 @@ const getBadgeStyle = (color: FilterColor = 'slate', isActive: boolean) => {
   const styles = {
     slate: "bg-slate-100 text-slate-700 font-black border border-slate-200",
     blue: "bg-blue-200/50 text-blue-800 font-black border border-blue-200",
+    teal: "bg-teal-200/50 text-teal-800 font-black border border-teal-200",
     amber: "bg-amber-200/50 text-amber-800 font-black border border-amber-200",
     emerald: "bg-emerald-200/50 text-emerald-800 font-black border border-emerald-200",
     rose: "bg-rose-200/50 text-rose-800 font-black border border-rose-200",

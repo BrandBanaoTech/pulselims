@@ -115,7 +115,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           onClick={(e) => hasSub && !isCollapsed && toggleSubMenu(item.name, e)}
           className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} p-3 rounded-xl transition-all duration-200 outline-none ${
             isActive 
-              ? 'bg-slate-900 shadow-md shadow-slate-900/10' 
+              ? 'bg-teal-900 shadow-md shadow-teal-900/10' 
               : 'hover:bg-slate-100/80 active:bg-slate-200/60'
           }`}
         >
@@ -218,9 +218,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
+                {user?.logo_url? (
+                  <img src={user.logo_url} alt="Lab Logo" className="w-10 h-10 border border-teal-900 rounded-md" />
+                ):(
                 <div className="p-2.5 bg-slate-900 text-teal-400 rounded-xl shadow-lg shrink-0">
                   <HeartPulse className="animate-pulse" size={20} />
                 </div>
+                )}
                 <div className="min-w-0">
                   <h1 className="text-sm font-extrabold tracking-tight text-slate-900 truncate">{currentWorkspaceName}</h1>
                   <p className="text-[10px] text-slate-400 mt-0.5 font-bold tracking-wider">PulseLIMS</p>
@@ -266,9 +270,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         {/* Brand Header */}
         <div className={`h-20 flex items-center border-b border-slate-100 shrink-0 transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-5'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
+            {user?.logo_url? (
+              <img src={user.logo_url} alt="Lab Logo" className="w-10 h-10 border border-teal-900 rounded-md" />
+            ):(
             <div className="p-2.5 bg-slate-900 text-teal-400 rounded-xl shadow-lg shrink-0">
               <HeartPulse className="animate-pulse" size={20} />
             </div>
+            )}
             {!isCollapsed && (
               <div className="min-w-0 pr-2">
                 <h1 className="text-sm font-extrabold tracking-tight text-slate-900 truncate" title={currentWorkspaceName}>
@@ -300,7 +308,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             ${isCollapsed ? 'flex-col p-2 rounded-2xl gap-2 bg-transparent border-transparent shadow-none overflow-visible' : 'flex-row justify-between p-2.5 rounded-2xl shadow-xs gap-2 overflow-hidden'}
           `}>
             <div className={`flex items-center gap-3 min-w-0 ${isCollapsed ? 'justify-center w-full' : ''}`}>
-              <div className="w-9 h-9 rounded-xl bg-teal-100/80 border border-teal-200 text-teal-700 font-extrabold flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-9 h-9 rounded-xl bg-slate-100/80 border border-slate-200 text-teal-700 font-extrabold flex items-center justify-center shrink-0 shadow-sm">
                 {user?.full_name?.charAt(0) || 'U'}
               </div>
               {!isCollapsed && (

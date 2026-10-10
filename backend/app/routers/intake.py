@@ -27,7 +27,7 @@ def calculate_payment_status(net_amount: Decimal, paid_amount: Decimal) -> Payme
     return PaymentStatusEnum.UNPAID
 
 
-@router.post("", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
 def create_intake(
     payload: IntakeCreate,
     db: Session = Depends(get_db),

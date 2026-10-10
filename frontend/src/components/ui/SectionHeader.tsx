@@ -25,7 +25,7 @@ const badgeStyles = {
 
 // Text colors are defined at the root so children inherit them perfectly via opacity
 const variantStyles: Record<HeaderVariant, string> = {
-  transparent: "bg-transparent text-slate-900 px-1 py-2",
+  transparent: "bg-transparent text-slate-900",
   primary: "bg-teal-600 text-white shadow-md shadow-teal-600/20 p-4",
   secondary: "bg-slate-50 text-slate-900 border border-slate-200/80 p-4",
   dark: "bg-slate-900 text-white shadow-md shadow-slate-900/20 p-4",
@@ -43,7 +43,7 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <div
-      className={`flex flex-col md:flex-row md:items-center justify-between rounded-xl mb-2 min-w-0 transition-colors ${variantStyles[variant]}`}
+      className={`flex flex-col md:flex-row md:items-center justify-between rounded-xl mb-4 min-w-0 transition-colors ${variantStyles[variant]}`}
     >
       <div className="flex items-center min-w-0 gap-2.5">
         {Icon && (
@@ -60,16 +60,16 @@ export function SectionHeader({
 
           {badge && (
             <span
-              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border leading-none ${badgeStyles[badgeColor]}`}
+              className={`px-2 py-0.5 rounded text-[10.5px] font-bold uppercase tracking-wider border leading-none ${badgeStyles[badgeColor]}`}
             >
               {badge}
             </span>
           )}
 
           {hint && (
-            <div className="hidden md:flex items-center gap-2 min-w-0 opacity-70">
-              <span className="text-[10px] font-black">•</span>
-              <p className="text-sm font-medium truncate leading-none mt-0.5">
+            <div className="hidden md:flex items-center gap-2.5 min-w-0 opacity-70">
+              <span className="text-[10.5px] font-black">•</span>
+              <p className="text-sm font-medium truncate leading-none">
                 {hint}
               </p>
             </div>

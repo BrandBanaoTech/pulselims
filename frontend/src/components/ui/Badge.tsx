@@ -12,7 +12,7 @@ export function StatusBadge({ status, label, isPulsing = false }: StatusBadgePro
     if (status === 'processing') return 'bg-amber-50 text-amber-800 border-amber-200/80';
     if (status === 'sample_collected') return 'bg-indigo-50 text-indigo-800 border-indigo-200/80';
     if (status === 'cancelled') return 'bg-rose-50 text-rose-800 border-rose-200/80';
-    return 'bg-blue-50 text-blue-800 border-blue-200/80';
+    return 'bg-teal-50 text-teal-800 border-blue-200/80';
   };
 
   return (

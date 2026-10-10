@@ -14,7 +14,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const baseStyle = "inline-flex items-center justify-center gap-2 rounded-xl transition-all active:scale-95 outline-none disabled:opacity-50 disabled:pointer-events-none shrink-0";
     
     const variants = {
-      primary: "bg-teal-600 hover:bg-teal-700 text-white font-black shadow-lg shadow-teal-500/20",
+      primary: "bg-teal-900 hover:bg-teal-700 text-white font-black shadow-lg shadow-teal-900/10",
       secondary: "bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold shadow-sm",
       dark: "bg-slate-900 hover:bg-slate-800 text-white font-black shadow-lg shadow-slate-900/20",
       danger: "bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold border border-rose-200/80",

@@ -3,11 +3,11 @@ import { api } from "@/lib/axios";
 // ==========================================
 // 1. ENUMS (Exact FastAPI Backend Match)
 // ==========================================
-export type GenderEnum = "Male" | "Female" | "Other";
+export type GenderEnum = "M" | "F" | "Other";
 export type PriorityEnum = "Routine" | "Urgent" | "STAT";
 export type DiscountTypeEnum = "percentage" | "flat" | "none";
 export type PaymentMethodEnum = "cash" | "upi" | "card" | "bank_transfer" | "insurance" | "none";
-export type PaymentStatusEnum = "unpaid" | "partial" | "paid" | "refunded";
+export type PaymentStatusEnum = "Unpaid" | "Partial" | "Paid" | "Refunded";
 export type IntakeStatusEnum = "registered" | "sample_collected" | "processing" | "completed" | "cancelled";
 
 // ==========================================
@@ -19,6 +19,15 @@ export interface PatientPayload {
   gender: GenderEnum;
   phone: string;
   address?: string;
+}
+
+export interface LabTest {
+  id: string;
+  code: string;
+  name: string;
+  department: string;
+  price: number;
+  tat: string;
 }
 
 export interface ClinicalPayload {
