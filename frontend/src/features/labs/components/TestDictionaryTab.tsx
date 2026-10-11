@@ -14,7 +14,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 // ==========================================
 // API CONFIGURATION
 // ==========================================
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 // ==========================================
 // TYPES (Aligned with FastAPI Schemas)
@@ -118,7 +118,7 @@ export function TestDictionaryTab() {
     if (!token) return;
     try {
       setIsFetchingLocal(true);
-      const res = await fetch(`${API_BASE_URL}/api/v1/tests`, { headers: authHeaders });
+      const res = await fetch(`${API_BASE_URL}/tests`, { headers: authHeaders });
       if (!res.ok) throw new Error("Failed to load active tests");
       const data = await res.json();
       setLocalTests(data);
@@ -150,7 +150,7 @@ export function TestDictionaryTab() {
       try {
         if (!useOnlineSearch) {
           // SEARCH 1: Securely hit your FastAPI Master Catalog
-          const res = await fetch(`${API_BASE_URL}/api/v1/tests/master-catalog?search=${encodeURIComponent(globalSearchQuery)}`, { headers: authHeaders });
+          const res = await fetch(`${API_BASE_URL}/tests/master-catalog?search=${encodeURIComponent(globalSearchQuery)}`, { headers: authHeaders });
           if (!res.ok) throw new Error("Catalog fetch failed");
           const data = await res.json();
           
@@ -280,7 +280,7 @@ export function TestDictionaryTab() {
         is_active: formIsActive
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/tests`, {
+      const res = await fetch(`${API_BASE_URL}/tests`, {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify(payload)
@@ -308,7 +308,7 @@ export function TestDictionaryTab() {
       setOpenDropdownId(null);
 
       // Backend Update
-      await fetch(`${API_BASE_URL}/api/v1/tests/${id}`, {
+      await fetch(`${API_BASE_URL}/tests/${id}`, {
         method: "PUT",
         headers: authHeaders,
         body: JSON.stringify({ is_active: !currentStatus })
@@ -333,7 +333,7 @@ export function TestDictionaryTab() {
         is_active: test.is_active
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/v1/tests`, {
+      const res = await fetch(`${API_BASE_URL}/tests`, {
         method: "POST",
         headers: authHeaders,
         body: JSON.stringify(payload)
@@ -353,7 +353,7 @@ export function TestDictionaryTab() {
     if(!window.confirm("Are you sure you want to deactivate this test code?")) return;
     try {
       // We use PUT to soft-delete (is_active = false) because billing codes shouldn't be hard deleted.
-      const res = await fetch(`${API_BASE_URL}/api/v1/tests/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/tests/${id}`, {
         method: "PUT",
         headers: authHeaders,
         body: JSON.stringify({ is_active: false })
