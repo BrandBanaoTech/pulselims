@@ -39,6 +39,7 @@ def create_intake(
     db: Session = Depends(get_db),
     token: TokenPayload = Depends(require_lab_permission("manage_intakes"))
     ):
+    print(payload)
     user_uuid = uuid.UUID(token.sub)
     user = db.execute(select(User).where(User.id == user_uuid)).scalar()
     stat = []
@@ -62,26 +63,35 @@ def create_intake(
             if len(tests) != len(payload.clinical.test_ids):
                 raise HTTPException(status_code=400, detail="One or more tests are invalid or inactive.")
 
-            gross_amount = sum((t.price or Decimal('0.00') for t in tests), Decimal('0.00'))
+            # gross_amount = sum((t.price or Decimal('0.00') for t in tests), Decimal('0.00'))
             
-            # 2. Calculate Secure Discounts
-            discount_amount = Decimal('0.00')
-            if payload.billing.discount_type == DiscountTypeEnum.PERCENTAGE:
-                discount_amount = (payload.billing.discount_value / Decimal('100.00')) * gross_amount
-            elif payload.billing.discount_type == DiscountTypeEnum.FLAT:
-                discount_amount = payload.billing.discount_value
+            # # 2. Calculate Secure Discounts
+            # discount_amount = Decimal('0.00')
+            # if payload.billing.discount_type == DiscountTypeEnum.PERCENTAGE:
+            #     discount_amount = (payload.billing.discount_value / Decimal('100.00')) * gross_amount
+            # elif payload.billing.discount_type == DiscountTypeEnum.FLAT:
+            #     discount_amount = payload.billing.discount_value
                 
-            if discount_amount > gross_amount:
-                raise HTTPException(status_code=400, detail="Discount cannot exceed gross amount.")
+            # if discount_amount > gross_amount:
+            #     raise HTTPException(status_code=400, detail="Discount cannot exceed gross amount.")
 
-            net_amount = gross_amount - discount_amount
-            paid_amount = payload.billing.paid_amount or Decimal('0.00')
+            # net_amount = gross_amount - discount_amount
+            # paid_amount = payload.billing.paid_amount or Decimal('0.00')
             
-            if paid_amount > net_amount:
-                raise HTTPException(status_code=400, detail="Collected amount cannot exceed the net bill.")
+            # if paid_amount > net_amount:
+            #     raise HTTPException(status_code=400, detail="Collected amount cannot exceed the net bill.")
 
-            balance_due = net_amount - paid_amount
-            payment_status = calculate_payment_status(net_amount, paid_amount)
+            # balance_due = net_amount - paid_amount
+            # payment_status = calculate_payment_status(net_amount, paid_amount)
+
+            invoice = compute_invoice_totals(
+                db, 
+                lab_id,
+                payload.clinical.test_ids, 
+                payload.billing.discount_type,
+                payload.billing.discount_value,
+                payload.billing.paid_amount
+            )
 
             # 3. CONCURRENCY RETRY LOOP
             MAX_RETRIES = 3
@@ -108,15 +118,15 @@ def create_intake(
                         tests=[str(test.code) for test in tests],
                         
                         # Financial Data
-                        payment_status=payment_status,
+                        payment_status=invoice["payment_status"],
                         payment_method=payload.billing.payment_method,
                         discount_type=payload.billing.discount_type,
                         discount_value=payload.billing.discount_value,
-                        gross_amount=gross_amount,
-                        discount_amount=discount_amount,
-                        net_amount=net_amount,
-                        paid_amount=paid_amount,
-                        balance_due=balance_due
+                        gross_amount=invoice["gross_amount"],
+                        discount_amount=invoice["discount_amount"],
+                        net_amount=invoice["net_amount"],
+                        paid_amount=invoice["paid_amount"],
+                        balance_due=invoice["balance_due"]
                     )
                     
                     db.add(new_intake)
@@ -208,7 +218,7 @@ def update_intake(
         )
 
     if payload.status:
-                intake.status = payload.status
+        intake.status = payload.status
 
     if payload.priority:
         intake.priority = payload.priority

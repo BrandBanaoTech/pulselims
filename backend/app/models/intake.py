@@ -19,7 +19,6 @@ class Intake(Base):
     lab_id = Column(Uuid(as_uuid=True), ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Auto-Generated identifiers
-    lab_sequence = Column(Integer, nullable=False)
     accession_number = Column(String(30), nullable=False, index=True)
     
     # ---------------------------------------------------------

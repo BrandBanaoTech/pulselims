@@ -1,8 +1,8 @@
-"""initial_schema
+"""init migration
 
-Revision ID: b116158bd7a3
+Revision ID: 1c73720a6e7b
 Revises: 
-Create Date: 2026-08-08 23:44:12.267229
+Create Date: 2026-10-12 04:52:09.992531
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'b116158bd7a3'
+revision: str = '1c73720a6e7b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -61,6 +61,13 @@ def upgrade() -> None:
     op.create_index(op.f('ix_master_catalog_tests_id'), 'master_catalog_tests', ['id'], unique=False)
     op.create_index(op.f('ix_master_catalog_tests_loinc_code'), 'master_catalog_tests', ['loinc_code'], unique=True)
     op.create_index(op.f('ix_master_catalog_tests_official_name'), 'master_catalog_tests', ['official_name'], unique=False)
+    op.create_table('daily_stats',
+    sa.Column('lab_id', sa.Uuid(), nullable=False),
+    sa.Column('sequence_date', sa.Date(), server_default=sa.text('(CURRENT_DATE)'), nullable=False),
+    sa.Column('daily_value', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['lab_id'], ['labs.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('lab_id')
+    )
     op.create_table('lab_tests',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('lab_id', sa.Uuid(), nullable=False),
@@ -101,6 +108,48 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_mobile'), 'users', ['mobile'], unique=True)
+    op.create_table('intakes',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('lab_id', sa.Uuid(), nullable=False),
+    sa.Column('accession_number', sa.String(length=30), nullable=False),
+    sa.Column('patient_name', sa.String(length=150), nullable=False),
+    sa.Column('patient_phone', sa.String(length=20), nullable=False),
+    sa.Column('patient_age', sa.Integer(), nullable=False),
+    sa.Column('patient_gender', sa.Enum('MALE', 'FEMALE', 'OTHER', name='genderenum'), nullable=False),
+    sa.Column('patient_address', sa.String(length=500), nullable=True),
+    sa.Column('created_by', sa.Uuid(), nullable=True),
+    sa.Column('priority', sa.Enum('ROUTINE', 'URGENT', 'STAT', name='priorityenum'), nullable=False),
+    sa.Column('referring_doctor', sa.String(length=150), nullable=True),
+    sa.Column('clinical_notes', sa.String(length=1000), nullable=True),
+    sa.Column('intake_date', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('sample_collection_date', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('status', sa.Enum('REGISTERED', 'SAMPLE_COLLECTED', 'PROCESSING', 'COMPLETED', 'CANCELLED', name='intakestatusenum'), nullable=False),
+    sa.Column('payment_status', sa.Enum('UNPAID', 'PARTIAL', 'PAID', 'REFUNDED', name='paymentstatusenum'), nullable=False),
+    sa.Column('payment_method', sa.Enum('CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'INSURANCE', 'NONE', name='paymentmethodenum'), nullable=False),
+    sa.Column('discount_type', sa.Enum('PERCENTAGE', 'FLAT', 'NONE', name='discounttypeenum'), nullable=False),
+    sa.Column('discount_value', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('gross_amount', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('discount_amount', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('net_amount', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('paid_amount', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('balance_due', sa.Numeric(precision=10, scale=2), nullable=False),
+    sa.Column('test_ids', sa.JSON().with_variant(sa.JSON(), 'postgresql'), nullable=False),
+    sa.Column('tests', sa.JSON().with_variant(sa.JSON(), 'postgresql'), nullable=True),
+    sa.Column('is_deleted', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['lab_id'], ['labs.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('lab_id', 'accession_number', name='uq_lab_accession')
+    )
+    op.create_index(op.f('ix_intakes_accession_number'), 'intakes', ['accession_number'], unique=False)
+    op.create_index(op.f('ix_intakes_id'), 'intakes', ['id'], unique=False)
+    op.create_index(op.f('ix_intakes_lab_id'), 'intakes', ['lab_id'], unique=False)
+    op.create_index(op.f('ix_intakes_patient_phone'), 'intakes', ['patient_phone'], unique=False)
+    op.create_index(op.f('ix_intakes_referring_doctor'), 'intakes', ['referring_doctor'], unique=False)
+    op.create_index(op.f('ix_intakes_status'), 'intakes', ['status'], unique=False)
+    op.create_index('ix_lab_intake_date', 'intakes', ['lab_id', 'intake_date'], unique=False)
+    op.create_index('ix_lab_patient_phone', 'intakes', ['lab_id', 'patient_phone'], unique=False)
     op.create_table('lab_memberships',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
@@ -127,6 +176,15 @@ def downgrade() -> None:
     op.drop_index('ix_user_lab_lookup', table_name='lab_memberships')
     op.drop_index(op.f('ix_lab_memberships_id'), table_name='lab_memberships')
     op.drop_table('lab_memberships')
+    op.drop_index('ix_lab_patient_phone', table_name='intakes')
+    op.drop_index('ix_lab_intake_date', table_name='intakes')
+    op.drop_index(op.f('ix_intakes_status'), table_name='intakes')
+    op.drop_index(op.f('ix_intakes_referring_doctor'), table_name='intakes')
+    op.drop_index(op.f('ix_intakes_patient_phone'), table_name='intakes')
+    op.drop_index(op.f('ix_intakes_lab_id'), table_name='intakes')
+    op.drop_index(op.f('ix_intakes_id'), table_name='intakes')
+    op.drop_index(op.f('ix_intakes_accession_number'), table_name='intakes')
+    op.drop_table('intakes')
     op.drop_index(op.f('ix_users_mobile'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
@@ -135,6 +193,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_lab_tests_is_active'), table_name='lab_tests')
     op.drop_index(op.f('ix_lab_tests_id'), table_name='lab_tests')
     op.drop_table('lab_tests')
+    op.drop_table('daily_stats')
     op.drop_index(op.f('ix_master_catalog_tests_official_name'), table_name='master_catalog_tests')
     op.drop_index(op.f('ix_master_catalog_tests_loinc_code'), table_name='master_catalog_tests')
     op.drop_index(op.f('ix_master_catalog_tests_id'), table_name='master_catalog_tests')
