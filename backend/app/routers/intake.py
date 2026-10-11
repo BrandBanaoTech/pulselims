@@ -3,6 +3,12 @@ import logging
 from typing import List, Optional
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
+
+from ..services.billing_service import compute_invoice_totals
+# from services.sequence_service import get_next_accession_number
+from ..services.sequence_service import get_next_accession_number
 from sqlalchemy import select, exc
 from sqlalchemy.orm import Session
 
@@ -27,91 +33,103 @@ def calculate_payment_status(net_amount: Decimal, paid_amount: Decimal) -> Payme
     return PaymentStatusEnum.UNPAID
 
 
-@router.post("/", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=IntakeResponse, status_code=status.HTTP_201_CREATED)
 def create_intake(
     payload: IntakeCreate,
     db: Session = Depends(get_db),
     token: TokenPayload = Depends(require_lab_permission("manage_intakes"))
-):
+    ):
     user_uuid = uuid.UUID(token.sub)
-    user_lab_id = db.execute(select(User.default_lab_id).where(User.id == user_uuid)).scalar()
+    user = db.execute(select(User).where(User.id == user_uuid)).scalar()
+    stat = []
+    if user:
+        lab_id = user.default_lab.id
+        lab_name = user.default_lab.name
+        stat = user.default_lab.last_stat
+        accession_string = get_next_accession_number(db, lab_id, lab_name, stat)
 
-    # 1. ZERO-TRUST PRICING: Fetch exact prices from the DB
-    tests = db.execute(
-        select(LabTest.price).where(
-            LabTest.id.in_(payload.clinical.test_ids),
-            LabTest.lab_id == user_lab_id, 
-            LabTest.is_active == True
-        )
-    ).scalars().all()
+        if lab_id:
 
-    if len(tests) != len(payload.clinical.test_ids):
-        raise HTTPException(status_code=400, detail="One or more tests are invalid or inactive.")
+            # 1. ZERO-TRUST PRICING: Fetch exact prices from the DB
+            tests = db.execute(
+                select(LabTest).where(
+                    LabTest.id.in_(payload.clinical.test_ids),
+                    LabTest.lab_id == lab_id, 
+                    LabTest.is_active == True
+                )
+            ).scalars().all()
 
-    gross_amount = sum((t or Decimal('0.00') for t in tests), Decimal('0.00'))
-    
-    # 2. Calculate Secure Discounts
-    discount_amount = Decimal('0.00')
-    if payload.billing.discount_type == DiscountTypeEnum.PERCENTAGE:
-        discount_amount = (payload.billing.discount_value / Decimal('100.00')) * gross_amount
-    elif payload.billing.discount_type == DiscountTypeEnum.FLAT:
-        discount_amount = payload.billing.discount_value
-        
-    if discount_amount > gross_amount:
-        raise HTTPException(status_code=400, detail="Discount cannot exceed gross amount.")
+            if len(tests) != len(payload.clinical.test_ids):
+                raise HTTPException(status_code=400, detail="One or more tests are invalid or inactive.")
 
-    net_amount = gross_amount - discount_amount
-    paid_amount = payload.billing.paid_amount or Decimal('0.00')
-    
-    if paid_amount > net_amount:
-        raise HTTPException(status_code=400, detail="Collected amount cannot exceed the net bill.")
-
-    balance_due = net_amount - paid_amount
-    payment_status = calculate_payment_status(net_amount, paid_amount)
-
-    # 3. CONCURRENCY RETRY LOOP
-    MAX_RETRIES = 3
-    for attempt in range(MAX_RETRIES):
-        try:
-            # Flatten the nested payload into the flat database model
-            new_intake = Intake(
-                lab_id=user_lab_id,
-                created_by=user_uuid,
-                
-                # Patient Data
-                patient_name=payload.patient.name,
-                patient_phone=payload.patient.phone,
-                patient_age=payload.patient.age,
-                patient_gender=payload.patient.gender,
-                patient_address=payload.patient.address,
-                
-                # Clinical Data
-                priority=payload.clinical.priority,
-                referring_doctor=payload.clinical.doctor_reference,
-                clinical_notes=payload.clinical.clinical_notes,
-                test_ids=[str(t_id) for t_id in payload.clinical.test_ids],
-                
-                # Financial Data
-                payment_status=payment_status,
-                payment_method=payload.billing.payment_method,
-                discount_type=payload.billing.discount_type,
-                discount_value=payload.billing.discount_value,
-                gross_amount=gross_amount,
-                discount_amount=discount_amount,
-                net_amount=net_amount,
-                paid_amount=paid_amount,
-                balance_due=balance_due
-            )
+            gross_amount = sum((t.price or Decimal('0.00') for t in tests), Decimal('0.00'))
             
-            db.add(new_intake)
-            db.commit()      
-            db.refresh(new_intake)
-            return new_intake
+            # 2. Calculate Secure Discounts
+            discount_amount = Decimal('0.00')
+            if payload.billing.discount_type == DiscountTypeEnum.PERCENTAGE:
+                discount_amount = (payload.billing.discount_value / Decimal('100.00')) * gross_amount
+            elif payload.billing.discount_type == DiscountTypeEnum.FLAT:
+                discount_amount = payload.billing.discount_value
+                
+            if discount_amount > gross_amount:
+                raise HTTPException(status_code=400, detail="Discount cannot exceed gross amount.")
+
+            net_amount = gross_amount - discount_amount
+            paid_amount = payload.billing.paid_amount or Decimal('0.00')
             
-        except exc.IntegrityError:
-            db.rollback()
-            if attempt == MAX_RETRIES - 1:
-                raise HTTPException(status_code=409, detail="High server traffic. Please click save again.")
+            if paid_amount > net_amount:
+                raise HTTPException(status_code=400, detail="Collected amount cannot exceed the net bill.")
+
+            balance_due = net_amount - paid_amount
+            payment_status = calculate_payment_status(net_amount, paid_amount)
+
+            # 3. CONCURRENCY RETRY LOOP
+            MAX_RETRIES = 3
+            for attempt in range(MAX_RETRIES):
+                try:
+                    # Flatten the nested payload into the flat database model
+                    new_intake = Intake(
+                        lab_id=lab_id,
+                        created_by=user_uuid,
+                        accession_number=accession_string,
+                        
+                        # Patient Data
+                        patient_name=payload.patient.name,
+                        patient_phone=payload.patient.phone,
+                        patient_age=payload.patient.age,
+                        patient_gender=payload.patient.gender,
+                        patient_address=payload.patient.address,
+                        
+                        # Clinical Data
+                        priority=payload.clinical.priority,
+                        referring_doctor=payload.clinical.doctor_reference,
+                        clinical_notes=payload.clinical.clinical_notes,
+                        test_ids=[str(t_id) for t_id in payload.clinical.test_ids],
+                        tests=[str(test.code) for test in tests],
+                        
+                        # Financial Data
+                        payment_status=payment_status,
+                        payment_method=payload.billing.payment_method,
+                        discount_type=payload.billing.discount_type,
+                        discount_value=payload.billing.discount_value,
+                        gross_amount=gross_amount,
+                        discount_amount=discount_amount,
+                        net_amount=net_amount,
+                        paid_amount=paid_amount,
+                        balance_due=balance_due
+                    )
+                    
+                    db.add(new_intake)
+                    db.commit()      
+                    db.refresh(new_intake)
+                    return new_intake
+                    
+                except exc.IntegrityError:
+                    db.rollback()
+                    if attempt == MAX_RETRIES - 1:
+                        raise HTTPException(status_code=409, detail="High server traffic. Please click save again.")
+
+    return {"status": "Error", "code": 401}
 
 
 @router.get("", response_model=List[IntakeResponse])
@@ -133,37 +151,7 @@ def list_intakes(
 
     stmt = stmt.order_by(Intake.intake_date.desc()).limit(limit).offset(offset)
     
-    # return db.execute(stmt).scalars().all()
-
-    record = [{
-        "id": "6537e12f-81f7-4ce0-9aa8-47dd73316aad",
-        "lab_id": "df4a557a-036e-428d-ae52-cb4b54730b6c",
-        "accession_number": "ACC-1000",
-        "patient_name": "New Name",
-        "patient_phone": "9876543210",
-        "patient_age": 28,
-        "patient_gender": "M",
-        "patient_address": None,
-        "priority": "Routine",
-        "referring_doctor": None,
-        "clinical_notes": None,
-        "test_ids": ["bd56f244-9a0c-4621-91b9-6032daa2e9df"],
-        "tests": ["CBC", "Lipid", "KFT", "LFT"],
-        "status": "registered",
-        "intake_date": "2026-08-17T02:22:07",
-        "sample_collection_date": None,
-        "updated_at": "2026-09-11T01:08:13",
-        "payment_status": "Unpaid",
-        "payment_method": "UPI",
-        "discount_type": "percentage",
-        "discount_value": "10.00",
-        "gross_amount": "350.00",
-        "discount_amount": "35.00",
-        "net_amount": "315.00",
-        "paid_amount": "0.00",
-        "balance_due": "315.00",
-    }]
-    return record
+    return  db.execute(stmt).scalars().all()
 
 
 @router.get("/{intake_id}", response_model=IntakeResponse)
@@ -183,38 +171,120 @@ def get_intake(
 
 @router.put("/{intake_id}", response_model=IntakeResponse)
 def update_intake(
-    intake_id: uuid.UUID,
+    intake_id: str,
     payload: IntakeUpdate,
     db: Session = Depends(get_db),
     token: TokenPayload = Depends(require_lab_permission("manage_intakes"))
 ):
+    """
+    Safely updates clinical logistics for an active intake order.
+    Enforces multi-tenant scoping, state locks, and audit tracking.
+    """
     user_uuid = uuid.UUID(token.sub)
     user_lab_id = db.execute(select(User.default_lab_id).where(User.id == user_uuid)).scalar()
+    
+    intake_id = str(intake_id).replace("-", "")
+    
+    # 1. Multi-Tenant Scoping & Existence Check
+    intake = db.execute(
+        select(Intake).where(
+            Intake.id == uuid.UUID(intake_id),
+            Intake.lab_id == user_lab_id,
+            Intake.is_deleted == False
+        )
+    ).scalar_one_or_none()
 
-    intake = db.execute(select(Intake).where(Intake.id == intake_id, Intake.lab_id == user_lab_id)).scalars().first()
-    if not intake: raise HTTPException(status_code=404, detail="Order not found.")
+    if not intake:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Intake order not found."
+        )
 
-    update_data = payload.model_dump(exclude_unset=True)
+    # 2. Compliance State Lock 
+    if intake.status == IntakeStatusEnum.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify a completed intake order. Use an amendment workflow instead."
+        )
 
-    if payload.additional_payment is not None and payload.additional_payment > 0:
-        new_paid = intake.paid_amount + payload.additional_payment
-        if new_paid > intake.net_amount:
-            raise HTTPException(status_code=400, detail=f"Overpayment. Max remaining balance is ₹{intake.balance_due}")
-            
-        intake.paid_amount = new_paid
-        intake.balance_due = intake.net_amount - new_paid
-        intake.payment_status = calculate_payment_status(intake.net_amount, new_paid)
-        del update_data['additional_payment'] 
+    if payload.status:
+                intake.status = payload.status
 
-    if "test_ids" in update_data and update_data["test_ids"] is not None:
-        update_data["test_ids"] = [str(t_id) for t_id in update_data["test_ids"]]
+    if payload.priority:
+        intake.priority = payload.priority
+    
+    if payload.test_ids:
+        test_ids = [str(uuid.UUID(str(t_id))) for t_id in payload.test_ids]
+        tests = list(payload.tests)
+        intake.test_ids = test_ids
+        intake.tests = tests
 
-    for key, value in update_data.items():
-        setattr(intake, key, value)
-        
+        invoice = compute_invoice_totals(
+            db, 
+            user_lab_id,
+            payload.test_ids, 
+            payload.billing.discount_type,
+            payload.billing.discount_value,
+            payload.billing.paid_amount
+        )
+
+        intake.gross_amount = invoice["gross_amount"]
+        intake.discount_amount = invoice["discount_amount"]
+        intake.net_amount = invoice["net_amount"]
+        intake.paid_amount = invoice["paid_amount"]
+        intake.balance_due = invoice["balance_due"]
+        intake.payment_status = invoice["payment_status"]
+        intake.updated_by_id = user_uuid
+
+    if payload.billing:
+        intake.payment_status = payload.billing.payment_status
+        intake.payment_method = payload.billing.payment_method
+
+        if payload.billing.payment_status == "Paid":
+            intake.paid_amount = intake.net_amount
+            intake.balance_due = 0
+        elif payload.billing.payment_status == "Partial":
+            intake.paid_amount = intake.net_amount
+            intake.balance_due = intake.net_amount
     db.commit()
     db.refresh(intake)
     return intake
+
+
+# @router.put("/{intake_id}", response_model=IntakeResponse)
+# def update_intake(
+#     intake_id: uuid.UUID,
+#     payload: IntakeUpdate,
+#     db: Session = Depends(get_db),
+#     token: TokenPayload = Depends(require_lab_permission("manage_intakes"))
+# ):
+#     user_uuid = uuid.UUID(token.sub)
+#     user_lab_id = db.execute(select(User.default_lab_id).where(User.id == user_uuid)).scalar()
+
+#     intake = db.execute(select(Intake).where(Intake.id == intake_id, Intake.lab_id == user_lab_id)).scalars().first()
+#     if not intake: raise HTTPException(status_code=404, detail="Order not found.")
+
+#     update_data = payload.model_dump(exclude_unset=True)
+
+#     if payload.additional_payment is not None and payload.additional_payment > 0:
+#         new_paid = intake.paid_amount + payload.additional_payment
+#         if new_paid > intake.net_amount:
+#             raise HTTPException(status_code=400, detail=f"Overpayment. Max remaining balance is ₹{intake.balance_due}")
+            
+#         intake.paid_amount = new_paid
+#         intake.balance_due = intake.net_amount - new_paid
+#         intake.payment_status = calculate_payment_status(intake.net_amount, new_paid)
+#         del update_data['additional_payment'] 
+
+#     if "test_ids" in update_data and update_data["test_ids"] is not None:
+#         update_data["test_ids"] = [str(t_id) for t_id in update_data["test_ids"]]
+
+#     for key, value in update_data.items():
+#         setattr(intake, key, value)
+        
+#     db.commit()
+#     db.refresh(intake)
+#     return intake
 
 
 @router.delete("/{intake_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -232,3 +302,33 @@ def cancel_intake(
     intake.status = IntakeStatusEnum.CANCELLED
     db.commit()
     return None
+
+    # record = [{
+    #     "id": "6537e12f-81f7-4ce0-9aa8-47dd73316aad",
+    #     "lab_id": "df4a557a-036e-428d-ae52-cb4b54730b6c",
+    #     "accession_number": "ACC-1000",
+    #     "patient_name": "New Name",
+    #     "patient_phone": "9876543210",
+    #     "patient_age": 28,
+    #     "patient_gender": "M",
+    #     "patient_address": None,
+    #     "priority": "Routine",
+    #     "referring_doctor": None,
+    #     "clinical_notes": None,
+    #     "test_ids": ["bd56f244-9a0c-4621-91b9-6032daa2e9df"],
+    #     "tests": ["CBC", "Lipid", "KFT", "LFT"],
+    #     "status": "registered",
+    #     "intake_date": "2026-08-17T02:22:07",
+    #     "sample_collection_date": None,
+    #     "updated_at": "2026-09-11T01:08:13",
+    #     "payment_status": "Unpaid",
+    #     "payment_method": "UPI",
+    #     "discount_type": "percentage",
+    #     "discount_value": "10.00",
+    #     "gross_amount": "350.00",
+    #     "discount_amount": "35.00",
+    #     "net_amount": "315.00",
+    #     "paid_amount": "0.00",
+    #     "balance_due": "315.00",
+    # }]
+    # return record

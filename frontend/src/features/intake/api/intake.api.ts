@@ -25,8 +25,14 @@ export const intakeApi = {
   },
 
   // Update workflow status
-  updateStatus: async (id: string, status: string): Promise<IntakeRecord> => {
-    const response = await api.put<IntakeRecord>(`/intakes/${id}`, { status });
+  updateIntake: async (id: string, payload: { priority?: string; test_ids?: string[]; [key: string]: any }) => {
+    const response = await api.put(`/intakes/${id}`, payload);
+    return response.data;
+  },
+
+  // Update workflow status
+  updateStatus: async (id: string, payload: {status?: string;}): Promise<IntakeRecord> => {
+    const response = await api.put<IntakeRecord>(`/intakes/${id}`, payload);
     return response.data;
   },
 

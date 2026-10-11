@@ -5,9 +5,9 @@ import { z } from "zod";
 // ==========================================
 export const IntakeStatusEnum = z.enum(["registered", "sample_collected", "processing", "completed", "cancelled"]);
 export const PriorityEnum = z.enum(["Routine", "Urgent", "STAT"]);
-export const GenderEnum = z.enum(["Male", "Female", "Other"]);
-export const PaymentStatusEnum = z.enum(["unpaid", "partial", "paid", "refunded"]);
-export const PaymentMethodEnum = z.enum(["cash", "upi", "card", "bank_transfer", "insurance", "none"]);
+export const GenderEnum = z.enum(["M", "F", "Other"]);
+export const PaymentStatusEnum = z.enum(["Unpaid", "Partial", "Paid", "Refunded"]);
+export const PaymentMethodEnum = z.enum(["Cash", "UPI", "Card", "Net_Banking", "Insurance", "none"]);
 export const DiscountTypeEnum = z.enum(["percentage", "flat", "none"]);
 
 // ==========================================

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, JSON, Uuid, Enum, Numeric
+from sqlalchemy import Column, String, Text, Integer, Date, Boolean, DateTime, ForeignKey, UniqueConstraint, Index, JSON, Uuid, Enum, Numeric
 # from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -47,6 +47,12 @@ class Lab(Base):
     owner = relationship("User", back_populates="owned_labs", foreign_keys=[owner_id])
     staff = relationship("LabMembership", back_populates="lab", cascade="all, delete-orphan")
     tests = relationship("LabTest", back_populates="lab", cascade="all, delete-orphan")
+    stats = relationship("DailyStats", back_populates="lab", cascade="all, delete-orphan")
+
+    @property
+    def last_stat(self):
+        """Safely returns the last element, or None if empty."""
+        return self.stats[-1] if self.stats else None
 
 
 # ==========================================
@@ -91,3 +97,22 @@ class LabTest(Base):
     @property
     def pdf_result_fields(self):
         return self.master_test.pdf_result_fields if self.master_test else []
+
+
+class DailyStats(Base):
+    """
+    High-performance daily counter for multi-tenant accession numbers.
+    Ensures gapless, collision-free sequencing using row-level locks.
+    """
+    __tablename__ = "daily_stats"
+
+    lab_id = Column(Uuid(as_uuid=True), ForeignKey("labs.id", ondelete="CASCADE"), primary_key=True)
+    sequence_date = Column(Date, nullable=False, server_default=func.current_date())
+    daily_value = Column(Integer, nullable=False, default=0)
+
+    lab = relationship("Lab", back_populates="stats")
+
+    @property
+    def last_element(self):
+        """Safely returns the last element, or None if empty."""
+        return self.list[-1] if self.list else None

@@ -18,7 +18,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 const MAIN_NAV = [
   { 
     name: "Patient Intakes", 
-    href: "/dashboard/intakes", 
+    href: "/intakes", 
     icon: ListPlus, 
     exact: false,
     // subOptions: [
@@ -34,7 +34,7 @@ const MAIN_NAV = [
 const BOTTOM_NAV = [
   { 
     name: "Labspace Settings", 
-    href: "/dashboard/settings", 
+    href: "/settings", 
     icon: Settings, 
     // exact: false,
     // Adding subOptions automatically makes it a hover-flyout when collapsed!
@@ -271,7 +271,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className={`h-20 flex items-center border-b border-slate-100 shrink-0 transition-all duration-300 ${isCollapsed ? 'justify-center px-0' : 'px-5'}`}>
           <div className="flex items-center gap-3 overflow-hidden">
             {user?.logo_url? (
-              <img src={user.logo_url} alt="Lab Logo" className="w-10 h-10 border border-teal-900 rounded-md" />
+              <div className="relative w-10 h-10 text-teal-400 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                <img src={user.logo_url} alt={currentWorkspaceName || "Lab Logo"} className="w-full h-full" />
+              </div>
             ):(
             <div className="p-2.5 bg-slate-900 text-teal-400 rounded-xl shadow-lg shrink-0">
               <HeartPulse className="animate-pulse" size={20} />
@@ -279,10 +281,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             )}
             {!isCollapsed && (
               <div className="min-w-0 pr-2">
-                <h1 className="text-sm font-extrabold tracking-tight text-slate-900 truncate" title={currentWorkspaceName}>
+                <h1 
+                    className="text-sm font-black tracking-tight text-slate-900 truncate bg-teal-800 to-teal-900 bg-clip-text text-transparent leading-snug" 
+                    title={currentWorkspaceName}
+                  >
                   {currentWorkspaceName}
                 </h1>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-bold tracking-widest uppercase">PulseLIMS</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <p className="text-[9.5px] text-slate-400 font-bold tracking-widest uppercase">PulseLIMS</p>
+                  <span className="relative flex h-1.5 w-1.5 shrink-0 text-teal-800">
+                    <span className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ring-2 ring-current bg-current"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 ring-2 ring-current bg-current"></span>
+                  </span>
+                </div>
+                {/* <p className="text-[10px] text-slate-400 mt-0.5 font-bold tracking-widest uppercase">PulseLIMS</p> */}
               </div>
             )}
           </div>

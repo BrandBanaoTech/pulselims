@@ -102,14 +102,27 @@ class IntakeCreate(BaseModel):
 class IntakeUpdate(BaseModel):
     """Payload for updating status, collecting balance, or amending notes."""
     status: Optional[IntakeStatusEnum] = None
-    sample_collection_date: Optional[datetime] = None
-    clinical_notes: Optional[str] = Field(None, max_length=1000)
-    
-    additional_payment: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
-    payment_method: Optional[PaymentMethodEnum] = None
+    priority: Optional[PriorityEnum] = None
     test_ids: Optional[List[UUID4]] = Field(None, min_length=1)
+    tests: Optional[List[str]] = Field(None, max_length=30)
+    billing: Optional[BillingPayload] = None
 
-    model_config = ConfigDict(str_strip_whitespace=True)
+    # referring_doctor: Optional[str] = Field(None, max_length=150)
+    # clinical_notes: Optional[str] = Field(None, max_length=1000)
+    # sample_type: Optional[str] = Field(None, max_length=100)
+    # priority: Optional[PriorityEnum] = None
+    # payment_method: Optional[PaymentMethodEnum] = None
+    # clinical: Optional[ClinicalPayload] = None
+    
+    # Note: Patient demographics and financials are excluded here 
+    # to prevent tampering with historical snapshots and ledger accounts.
+
+    # sample_collection_date: Optional[datetime] = None
+    # clinical_notes: Optional[str] = Field(None, max_length=1000)
+    
+    # additional_payment: Optional[Decimal] = Field(None, ge=0, max_digits=10, decimal_places=2)
+
+    # model_config = ConfigDict(str_strip_whitespace=True)
 
 
 class IntakeResponse(BaseModel):

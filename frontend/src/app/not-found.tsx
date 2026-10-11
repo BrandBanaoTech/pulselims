@@ -26,7 +26,7 @@ export default function NotFound() {
         </p>
 
         {/* Actions */}
-        <div className="flex items-center gap-4">
+        {/* <div className="flex items-center gap-4">
           <Link
             href="/dashboard"
             className="flex items-center gap-2 py-3 px-6 bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm rounded-xl transition-all shadow-lg shadow-teal-500/30"
@@ -41,7 +41,7 @@ export default function NotFound() {
             <Search size={18} />
             Contact Support
           </Link>
-        </div>
+        </div> */}
       </div>
       
       {/* Footer Branding */}

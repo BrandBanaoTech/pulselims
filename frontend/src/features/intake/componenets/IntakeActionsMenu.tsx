@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { MoreHorizontal, FileText, RefreshCcw, CreditCard, Trash2 } from "lucide-react";
+import { MoreHorizontal, FileText, RefreshCcw, CreditCard, Trash2, FilePenLine, FilePen, SquarePen } from "lucide-react";
 import type { IntakeRecord } from "../schemas/intake.schema";
 import type { IntakeActions } from "./IntakeRow";
 
@@ -30,13 +30,35 @@ export const IntakeActionsMenu = memo(({ data, actions }: { data: IntakeRecord; 
         <div className="absolute right-0 top-full mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl border border-slate-200/80 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] ring-1 ring-black/5 p-1 z-[100] animate-in fade-in zoom-in-95 duration-100 origin-top-right">
           
           <div className="flex flex-col">
+            {data.status == "completed" && (
+            <button 
+              onClick={() => { actions.toggleMenu?.(data.id); actions.edit?.(data as IntakeRecord); }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-teal-700 hover:bg-teal-50/70 rounded-md transition-colors outline-none"
+            >
+              <FileText size={14} strokeWidth={2.5} />
+              View Report
+            </button>
+            )}
+
+            {data.status == "registered" && (
+            <button 
+              onClick={() => { actions.toggleMenu?.(data.id); actions.edit?.(data); }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-teal-700 hover:bg-teal-50/70 rounded-md transition-colors outline-none"
+            >
+              <SquarePen size={14} strokeWidth={2.5} />
+              Edit Details
+            </button>
+            )}
+
+            {data.status == "processing" && (
             <button 
               onClick={() => { actions.toggleMenu?.(data.id); actions.view?.(data.id); }}
               className="w-full flex items-center gap-2.5 px-2.5 py-2 text-xs font-semibold text-slate-600 hover:text-teal-700 hover:bg-teal-50/70 rounded-md transition-colors outline-none"
             >
-              <FileText size={14} strokeWidth={2.5} />
-              View Details
+              <FilePenLine size={14} strokeWidth={2.5} />
+              Preapare Report
             </button>
+            )}
 
             {/* <button 
               onClick={() => { actions.toggleMenu?.(data.id); actions.updateStatus?.(data.id, data.status); }}

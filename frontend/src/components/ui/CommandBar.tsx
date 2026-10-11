@@ -24,11 +24,11 @@ interface CommandBarProps {
 const getActivePillStyle = (color: FilterColor = 'slate') => {
   const styles = {
     slate: "bg-white text-slate-900 shadow-sm border border-slate-200/80",
-    blue: "bg-blue-50 text-blue-700 shadow-sm border border-blue-200/80",
-    teal: "bg-teal-50 text-teal-700 shadow-sm border border-teal-200/80",
-    amber: "bg-amber-50 text-amber-700 shadow-sm border border-amber-200/80",
-    emerald: "bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-200/80",
-    rose: "bg-rose-50 text-rose-700 shadow-sm border border-rose-200/80",
+    blue: "text-blue-700 shadow-sm border border-blue-200/80", // bg-blue-50
+    teal: "text-teal-700 shadow-sm border border-teal-200/80", // bg-teal-50
+    amber: "text-amber-700 shadow-sm border border-amber-200/80", // bg-amber-50
+    emerald: "text-emerald-700 shadow-sm border border-emerald-200/80", // bg-emerald-50
+    rose: "text-rose-700 shadow-sm border border-rose-200/80", // bg-rose-50
   };
   return styles[color];
 };

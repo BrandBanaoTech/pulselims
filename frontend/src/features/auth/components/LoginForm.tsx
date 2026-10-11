@@ -141,7 +141,7 @@ export function LoginForm() {
       
       // Route transition (AuthGuard will handle the final destination automatically)
       if (defaultLab && token) {
-        router.push("/dashboard/intakes");
+        router.push("/intakes");
       }
       else if (!defaultLab && token) {
         toast.success("Please Register Your Lab.");

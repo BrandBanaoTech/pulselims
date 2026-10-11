@@ -36,9 +36,14 @@ export function useIntakes() {
   const updateStatus = async (id: string, currentStatus: string) => {
     const next = currentStatus === "processing" ? "completed" : currentStatus === "completed" ? "registered" : "processing";
     try {
-      await intakeApi.updateStatus(id, next);
+      if (currentStatus !== "completed") {
+      await intakeApi.updateStatus(id, {status: next});
       toast.success("Status Updated");
       fetchIntakes();
+      }
+      else {
+        toast.error("Report is Ready.");
+      }
     } catch { 
       toast.error("Update failed."); 
     }

@@ -17,6 +17,7 @@ import { intakeApi } from "@/features/intake/api/intake.api";
 import type { IntakeRecord } from "@/features/intake/schemas/intake.schema";
 import { NewIntakeDrawer } from "@/features/intake/componenets/NewIntakeDrawer";
 import { api } from "@/lib/axios";
+import { CollectBalanceModal } from "@/features/intake/componenets/CollectBalanceModal";
 
 
 interface LabTest {
@@ -41,7 +42,9 @@ export default function IntakesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingIntake, setEditingIntake] = useState<IntakeRecord | null>(null);
   const [collectBalanceRecord, setCollectBalanceRecord] = useState<IntakeRecord | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -51,6 +54,8 @@ export default function IntakesPage() {
   const [testSearchQuery, setTestSearchQuery] = useState("");
   const [isTestDropdownOpen, setIsTestDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [error, setError] = useState("");
 
   // ==========================================
   // 2. API & DATA FETCHING
@@ -104,15 +109,31 @@ export default function IntakesPage() {
   const rowActions: IntakeActions = useMemo(() => ({
     isMenuOpen: (id) => openMenuId === id,
     toggleMenu: (id) => setOpenMenuId(prev => prev === id ? null : id),
-    view: (id) => router.push(`/dashboard/reports/${id}`),
+    view: (id) => router.push(`/reports/${id}`),
+
+    edit: (record) => {
+      setEditingIntake(record); // Pre-fills drawer with this intake's data
+      setIsDrawerOpen(true);
+    },
     
     updateStatus: async (id, current) => {
       const next = current === "processing" ? "completed" : current === "completed" ? "registered" : "processing";
       try {
-        await intakeApi.updateStatus(id, next);
-        toast.success("Status Updated");
+        if (current == "completed"){
+          toast.error("Process Already Completed.")
+        }
+        else {
+        const response =  await intakeApi.updateStatus(id, {status: next});
+        toast.success("Status Updated to " + `${response.status}`);
         fetchIntakesQueue(); 
-      } catch { toast.error("Update failed."); }
+        }
+      } catch (error: unknown){ 
+        if (error instanceof Error) {
+          toast.error("Error");
+        } else {
+          toast.error("Error");
+        } 
+      }
     },
     
     collectBalance: (data) => setCollectBalanceRecord(data),
@@ -163,12 +184,12 @@ export default function IntakesPage() {
   return (
     <div className="flex-1 flex flex-col min-h-screen animate-in fade-in duration-500 font-sans relative max-w-[1600px] mx-auto w-full">
       
-      <SectionHeader 
+      {/* <SectionHeader 
         title="Intakes Queue" 
         hint="Manage registrations, process billing, and track diagnostic workflows in real-time." 
         icon={ListPlus} 
         badgeColor="emerald" 
-      />
+      /> */}
 
       {/* 🚀 1. The Context-Aware CommandBar */}
       <CommandBar 
@@ -179,7 +200,11 @@ export default function IntakesPage() {
         activeFilter={statusFilter}
         onFilterChange={setStatusFilter}
         action={
-          <Button variant="primary" icon={<Plus size={16} strokeWidth={2.5} />} onClick={() => setIsDrawerOpen(true)}>
+          <Button variant="primary" icon={<Plus size={16} strokeWidth={2.5} className={'text-teal-400'} />} 
+          onClick={() => {
+            setEditingIntake(null); // Ensures clean form state
+            setIsDrawerOpen(true);
+          }}>
              <span className="hidden sm:inline">New Intake</span>
           </Button>
         }
@@ -234,7 +259,44 @@ export default function IntakesPage() {
         </div>
       </div>
 
-      <NewIntakeDrawer isopen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} />
+      <NewIntakeDrawer 
+        isopen={isDrawerOpen} 
+        onClose={() => {
+          setIsDrawerOpen(false);
+          setEditingIntake(null); // Clear editing state on close
+        }} 
+        intakeToEdit={editingIntake} // 🚀 Pass the selected row object for Edit mode (or null for Create mode)
+        onSuccess={(savedRecord) => {
+          if (savedRecord) {
+            if (editingIntake) {
+              // 🔄 EDIT MODE: Replace the updated intake in local state immediately
+              setIntakes((prev) =>
+                prev.map((item) => (item.id === savedRecord.id ? savedRecord : item))
+              );
+            } else {
+              // 🚀 CREATE MODE: Prepend new intake to top of table immediately
+              setIntakes((prev) => [savedRecord, ...prev]);
+            }
+          } else {
+            // Fallback refetch if response object was empty
+            fetchIntakesQueue();
+          }
+        }}
+      />
+
+      {/* <NewIntakeDrawer 
+      isopen={isDrawerOpen} 
+      onClose={() => setIsDrawerOpen(false)} 
+      onSuccess={(newIntake) => {
+        if (newIntake) {
+          // 🚀 Instantly prepend the new intake to the top of the queue with zero latency
+          setIntakes(prev => [newIntake, ...prev]);
+        } else {
+          // Fallback: full refetch if data wasn't returned
+          fetchIntakesQueue();
+        }
+      }}
+      /> */}
 
       {/* Drawers / Modals */}
       {/* {isDrawerOpen && (
@@ -248,7 +310,7 @@ export default function IntakesPage() {
         />
       )} */}
       {/* <NewIntakeDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} onSuccess={fetchIntakesQueue} /> */}
-      {/* {collectBalanceRecord && <CollectBalanceModal record={collectBalanceRecord} onClose={() => setCollectBalanceRecord(null)} onSuccess={fetchIntakesQueue} />} */}
+      {collectBalanceRecord && <CollectBalanceModal record={collectBalanceRecord} onClose={() => setCollectBalanceRecord(null)} onSuccess={fetchIntakesQueue} />}
 
     </div>
   );

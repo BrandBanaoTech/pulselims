@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, DateTime, Enum, ForeignKey, 
+    Column, String, DateTime, Enum, ForeignKey, Boolean, 
     Index, JSON, Numeric, Integer, UniqueConstraint, select, func, event, Uuid
 )
 from sqlalchemy.orm import relationship
@@ -20,7 +20,7 @@ class Intake(Base):
     
     # Auto-Generated identifiers
     lab_sequence = Column(Integer, nullable=False)
-    accession_number = Column(String(30), nullable=False, index=True) # e.g., ACC-1001
+    accession_number = Column(String(30), nullable=False, index=True)
     
     # ---------------------------------------------------------
     # EMBEDDED PATIENT DATA
@@ -62,6 +62,9 @@ class Intake(Base):
     balance_due = Column(Numeric(10, 2), nullable=False, default=0.00)
     
     test_ids = Column(JSON().with_variant(JSON, 'postgresql'), nullable=False, default=list)
+    tests = Column(JSON().with_variant(JSON, 'postgresql'), nullable=True, default=list)
+
+    is_deleted = Column(Boolean, default=False, nullable=False)
 
     # ---------------------------------------------------------
     # CONSTRAINTS & INDEXES
@@ -76,14 +79,14 @@ class Intake(Base):
     creator = relationship("User", backref="created_intakes")
 
 
-@event.listens_for(Intake, 'before_insert')
-def set_accession_number(mapper, connection, target):
-    """Calculates the next safe sequence number strictly for this specific lab."""
-    table = Intake.__table__
-    stmt = select(func.max(table.c.lab_sequence)).where(table.c.lab_id == target.lab_id)
-    max_seq = connection.execute(stmt).scalar()
+# @event.listens_for(Intake, 'before_insert')
+# def set_accession_number(mapper, connection, target):
+#     """Calculates the next safe sequence number strictly for this specific lab."""
+#     table = Intake.__table__
+#     stmt = select(func.max(table.c.lab_sequence)).where(table.c.lab_id == target.lab_id)
+#     max_seq = connection.execute(stmt).scalar()
     
-    next_seq = (max_seq or 999) + 1
-    target.lab_sequence = next_seq
-    if not target.accession_number:
-        target.accession_number = f"ACC-{next_seq}"
+#     next_seq = (max_seq or 999) + 1
+#     target.lab_sequence = next_seq
+#     if not target.accession_number:
+#         target.accession_number = f"ACC-{next_seq}"

@@ -6,7 +6,7 @@ import { api } from "@/lib/axios";
 export type GenderEnum = "M" | "F" | "Other";
 export type PriorityEnum = "Routine" | "Urgent" | "STAT";
 export type DiscountTypeEnum = "percentage" | "flat" | "none";
-export type PaymentMethodEnum = "cash" | "upi" | "card" | "bank_transfer" | "insurance" | "none";
+export type PaymentMethodEnum = "Cash" | "UPI" | "Card" | "Net_Banking" | "Insurance" | "none";
 export type PaymentStatusEnum = "Unpaid" | "Partial" | "Paid" | "Refunded";
 export type IntakeStatusEnum = "registered" | "sample_collected" | "processing" | "completed" | "cancelled";
 
@@ -61,6 +61,7 @@ export interface IntakeUpdatePayload {
 }
 
 export interface IntakeResponse {
+  data: IntakeResponse;
   id: string; // UUID4
   lab_id: string;
   accession_number: string;
