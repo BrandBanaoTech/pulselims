@@ -581,7 +581,7 @@ export function NewIntakeDrawer({ isopen, onClose, onSuccess, intakeToEdit }: Ne
                     onChange={(e) => setPaymentStatus(e.target.value as PaymentStatusEnum)}
                     options={[
                       { label: "Unpaid", value: "Unpaid" },
-                      { label: "Partial", value: "Partial" },
+                      // { label: "Partial", value: "Partial" },
                       { label: "Paid", value: "Paid" },
                     ]}
                   />

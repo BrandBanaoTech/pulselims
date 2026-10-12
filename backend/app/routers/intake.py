@@ -247,13 +247,17 @@ def update_intake(
         intake.updated_by_id = user_uuid
 
     if payload.billing:
-        intake.payment_status = payload.billing.payment_status
+        new_status = payload.billing.payment_status
+        intake.payment_status = new_status
         intake.payment_method = payload.billing.payment_method
 
-        if payload.billing.payment_status == "Paid":
+        if new_status == "Paid":
             intake.paid_amount = intake.net_amount
             intake.balance_due = 0
-        elif payload.billing.payment_status == "Partial":
+        elif new_status == "Unpaid":
+            intake.balance_due = intake.net_amount
+            intake.paid_amount = 0
+        else:
             intake.paid_amount = intake.net_amount
             intake.balance_due = intake.net_amount
     db.commit()
